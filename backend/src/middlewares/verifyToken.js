@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const User = require("../models/User");
+const { User } = require("../models");
 
 /**
  * verifyToken
@@ -30,7 +30,7 @@ const verifyToken = async (req, res, next) => {
 
     // 3. Fetch the real user from database
     //    (decoded only contains id, role — we want the full user)
-    const user = await User.findById(decoded.id);
+    const user = await User.findByPk(decoded.id);
 
     if (!user) {
       return res.status(401).json({

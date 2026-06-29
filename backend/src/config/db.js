@@ -1,19 +1,19 @@
-const mysql = require("mysql2/promise");
-const dotenv = require("dotenv");
 
-dotenv.config();
 
-// Create a connection pool — reuses connections efficiently
-const pool = mysql.createPool({
+
+const { Sequelize } = require('sequelize');
+const { DataTypes } = require('sequelize');
+
+const sequelize = new Sequelize({
   host: process.env.DB_HOST,
   port: process.env.DB_PORT,
-  user: process.env.DB_USER,
+  username: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
-  waitForConnections: true,
-  connectionLimit: 10, // max simultaneous connections
-  queueLimit: 0,
+  dialect: 'mysql',
 });
+
+
 
 /**
  * Tests the database connection on startup.
@@ -21,13 +21,12 @@ const pool = mysql.createPool({
  */
 const testConnection = async () => {
   try {
-    const conn = await pool.getConnection();
+    await sequelize.authenticate();
     console.log("✅ MySQL connected successfully");
-    conn.release();
   } catch (err) {
     console.error("❌ MySQL connection failed:", err.message);
     process.exit(1);
   }
 };
 
-module.exports = { pool, testConnection };
+module.exports = { sequelize, testConnection };

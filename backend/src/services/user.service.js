@@ -1,5 +1,5 @@
 const bcrypt = require("bcryptjs");
-const User = require("../models/User");
+const { User } = require("../models");
 const {
   uploadToCloudinary,
   deleteFromCloudinary,
@@ -12,11 +12,16 @@ const {
  * Used when a renter wants to see an owner's profile page.
  */
 const getProfileById = async (id) => {
-  const user = await User.findById(id);
+  const user = await User.findByPk(id);
   if (!user) {
     throw { status: 404, message: "User not found." };
   }
-  return user;
+
+  return {
+    ...user.toJSON(),
+    name: user.full_name,
+    phone: user.phone_number,
+  };
 };
 
 // ── UPDATE PROFILE ────────────────────────────────────────────
@@ -26,20 +31,30 @@ const getProfileById = async (id) => {
  * Only updates fields that were actually sent — ignores the rest.
  */
 const updateProfile = async (userId, { name, phone, preferred_lang }) => {
-  // Fetch current data so we can fill in anything not being changed
-  const currentUser = await User.findById(userId);
+  const currentUser = await User.findByPk(userId);
   if (!currentUser) {
     throw { status: 404, message: "User not found." };
   }
 
-  const updated = await User.updateProfile(userId, {
-    name: name ?? currentUser.name,
-    phone: phone ?? currentUser.phone,
-    avatar_url: currentUser.avatar_url, // avatar handled separately
-    preferred_lang: preferred_lang ?? currentUser.preferred_lang,
-  });
+  const updates = {};
+  if (name !== undefined) updates.full_name = name;
+  if (phone !== undefined) updates.phone_number = phone;
+  if (preferred_lang !== undefined) updates.preferred_lang = preferred_lang;
 
-  return updated;
+  if (Object.keys(updates).length === 0) {
+    return {
+      ...currentUser.toJSON(),
+      name: currentUser.full_name,
+      phone: currentUser.phone_number,
+    };
+  }
+
+  const updated = await currentUser.update(updates);
+  return {
+    ...updated.toJSON(),
+    name: updated.full_name,
+    phone: updated.phone_number,
+  };
 };
 
 // ── UPDATE AVATAR ─────────────────────────────────────────────
@@ -52,40 +67,29 @@ const updateProfile = async (userId, { name, phone, preferred_lang }) => {
  * @param {Buffer} fileBuffer  - from multer memoryStorage
  */
 const updateAvatar = async (userId, fileBuffer) => {
-  const currentUser = await User.findById(userId);
+  const currentUser = await User.findByPk(userId);
   if (!currentUser) {
     throw { status: 404, message: "User not found." };
   }
 
-  // Delete old avatar from Cloudinary before uploading new one
-  // Avatar URLs look like: .../roomease/avatars/abc123
   if (currentUser.avatar_url) {
-    // Extract public_id from the URL
-    // e.g. "https://res.cloudinary.com/.../roomease/avatars/abc123"
-    //   →  "roomease/avatars/abc123"
     const urlParts = currentUser.avatar_url.split("/upload/")[1];
     if (urlParts) {
-      // Remove file extension to get the public_id
       const publicId = urlParts.replace(/\.[^/.]+$/, "");
       await deleteFromCloudinary(publicId).catch(() => {
-        // Don't crash if old image delete fails — just log it
         console.warn(`Could not delete old avatar: ${publicId}`);
       });
     }
   }
 
-  // Upload new avatar
   const { url } = await uploadToCloudinary(fileBuffer, "roomease/avatars");
+  const updated = await currentUser.update({ avatar_url: url });
 
-  // Save new URL to database
-  const updated = await User.updateProfile(userId, {
-    name: currentUser.name,
-    phone: currentUser.phone,
-    avatar_url: url,
-    preferred_lang: currentUser.preferred_lang,
-  });
-
-  return updated;
+  return {
+    ...updated.toJSON(),
+    name: updated.full_name,
+    phone: updated.phone_number,
+  };
 };
 
 // ── CHANGE PASSWORD ───────────────────────────────────────────
@@ -106,15 +110,13 @@ const changePassword = async (userId, { currentPassword, newPassword }) => {
     };
   }
 
-  // Fetch full user including password hash
-  const user = await User.findByEmail((await User.findById(userId)).email);
+  const user = await User.findByPk(userId);
 
   if (!user) {
     throw { status: 404, message: "User not found." };
   }
 
-  // Block OAuth users — they have no password to change
-  if (user.auth_provider !== "local") {
+  if (user.google_id || user.facebook_id) {
     throw {
       status: 400,
       message:
@@ -122,14 +124,12 @@ const changePassword = async (userId, { currentPassword, newPassword }) => {
     };
   }
 
-  // Verify current password
-  const match = await bcrypt.compare(currentPassword, user.password);
+  const match = await bcrypt.compare(currentPassword, user.password_hash);
   if (!match) {
     throw { status: 401, message: "Current password is incorrect." };
   }
 
-  // Prevent reusing same password
-  const samePassword = await bcrypt.compare(newPassword, user.password);
+  const samePassword = await bcrypt.compare(newPassword, user.password_hash);
   if (samePassword) {
     throw {
       status: 400,
@@ -137,9 +137,8 @@ const changePassword = async (userId, { currentPassword, newPassword }) => {
     };
   }
 
-  // Hash and save new password
   const hashed = await bcrypt.hash(newPassword, 10);
-  await User.updatePassword(userId, hashed);
+  await user.update({ password_hash: hashed });
 };
 
 module.exports = {

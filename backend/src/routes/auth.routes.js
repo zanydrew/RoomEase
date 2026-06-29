@@ -1,18 +1,20 @@
+const express = require("express");
+const router = express.Router();
 const authService = require("../services/auth.service");
+const verifyToken = require("../middlewares/verifyToken");
 const { success, error } = require("../utils/response");
 
 // ── POST /api/auth/register ───────────────────────────────────
 const register = async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { full_name, email, password, role } = req.body;
 
-    // Basic presence check — detailed validation is in the service
-    if (!name || !email || !password || !role) {
-      return error(res, "Name, email, password, and role are required.", 400);
+    if (!full_name || !email || !password || !role) {
+      return error(res, "full_name, email, password, and role are required.", 400);
     }
 
     const { user, token } = await authService.register({
-      name,
+      full_name,
       email,
       password,
       role,
@@ -53,4 +55,8 @@ const getMe = async (req, res) => {
   }
 };
 
-module.exports = { register, login, getMe };
+module.exports = router;
+
+router.post("/register", register);
+router.post("/login", login);
+router.get("/me", verifyToken, getMe);

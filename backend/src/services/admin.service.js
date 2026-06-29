@@ -1,6 +1,4 @@
-const Room = require("../models/Room");
-const User = require("../models/User");
-const Notification = require("../models/Notification");
+const { Room, User, Notification } = require("../models");
 const { parsePagination } = require("../utils/pagination");
 
 // ── ROOM MODERATION ───────────────────────────────────────────
@@ -10,8 +8,14 @@ const { parsePagination } = require("../utils/pagination");
  */
 const getPendingRooms = async (query) => {
   const { limit, offset, page } = parsePagination(query, 20);
-  const rooms = await Room.findAll({ status: "pending", limit, offset });
-  return { rooms, page, limit };
+  const rooms = await Room.findAll({
+    where: { approval_status: "PENDING" },
+    limit,
+    offset,
+    order: [["created_at", "DESC"]],
+  });
+
+  return { rooms: rooms.map((room) => room.toJSON()), page, limit };
 };
 
 /**
@@ -19,12 +23,25 @@ const getPendingRooms = async (query) => {
  */
 const getAllRooms = async (query) => {
   const { limit, offset, page } = parsePagination(query, 20);
+  const where = {};
+
+  if (query.status) {
+    const statusValue = query.status.toUpperCase();
+    if (["AVAILABLE", "RENTED"].includes(statusValue)) {
+      where.status = statusValue;
+    } else {
+      where.approval_status = statusValue;
+    }
+  }
+
   const rooms = await Room.findAll({
-    status: query.status || null, // admin can filter by any status
+    where,
     limit,
     offset,
+    order: [["created_at", "DESC"]],
   });
-  return { rooms, page, limit };
+
+  return { rooms: rooms.map((room) => room.toJSON()), page, limit };
 };
 
 /**
@@ -32,24 +49,22 @@ const getAllRooms = async (query) => {
  * Notifies the owner.
  */
 const approveRoom = async (roomId) => {
-  const room = await Room.findById(roomId);
+  const room = await Room.findByPk(roomId);
   if (!room) throw { status: 404, message: "Room not found." };
-  if (room.status !== "pending") {
+  if (room.approval_status !== "PENDING") {
     throw { status: 400, message: "Only pending rooms can be approved." };
   }
 
-  await Room.setStatus(roomId, "approved");
+  await room.update({ approval_status: "APPROVED", status: "AVAILABLE" });
 
   await Notification.create({
     user_id: room.owner_id,
     type: "room_approved",
-    title: "Your listing is live!",
-    body: `"${room.title}" has been approved and is now publicly visible.`,
-    reference_id: roomId,
-    reference_type: "room",
+    message: `"${room.title}" has been approved and is now publicly visible.`,
+    reference_id: room.uuid,
   });
 
-  return Room.findById(roomId);
+  return (await Room.findByPk(roomId)).toJSON();
 };
 
 /**
@@ -61,24 +76,22 @@ const rejectRoom = async (roomId, rejection_reason) => {
     throw { status: 400, message: "A rejection reason is required." };
   }
 
-  const room = await Room.findById(roomId);
+  const room = await Room.findByPk(roomId);
   if (!room) throw { status: 404, message: "Room not found." };
-  if (room.status !== "pending") {
+  if (room.approval_status !== "PENDING") {
     throw { status: 400, message: "Only pending rooms can be rejected." };
   }
 
-  await Room.setStatus(roomId, "rejected", rejection_reason.trim());
+  await room.update({ approval_status: "REJECTED" });
 
   await Notification.create({
     user_id: room.owner_id,
     type: "room_rejected",
-    title: "Listing Not Approved",
-    body: `"${room.title}" was not approved. Reason: ${rejection_reason.trim()}`,
-    reference_id: roomId,
-    reference_type: "room",
+    message: `"${room.title}" was not approved. Reason: ${rejection_reason.trim()}`,
+    reference_id: room.uuid,
   });
 
-  return Room.findById(roomId);
+  return (await Room.findByPk(roomId)).toJSON();
 };
 
 // ── USER MANAGEMENT ───────────────────────────────────────────
@@ -89,13 +102,32 @@ const rejectRoom = async (roomId, rejection_reason) => {
  */
 const getAllUsers = async (query) => {
   const { limit, offset, page } = parsePagination(query, 20);
+  const where = {};
+
+  if (query.role) {
+    where.role = query.role.toUpperCase();
+  }
+
+  if (query.banned !== undefined) {
+    where.is_banned = query.banned === "true";
+  }
+
   const users = await User.findAll({
-    role: query.role || null,
-    is_banned: query.banned !== undefined ? query.banned === "true" : undefined,
+    where,
     limit,
     offset,
+    order: [["created_at", "DESC"]],
   });
-  return { users, page, limit };
+
+  return {
+    users: users.map((user) => ({
+      ...user.toJSON(),
+      name: user.full_name,
+      phone: user.phone_number,
+    })),
+    page,
+    limit,
+  };
 };
 
 /**
@@ -103,7 +135,7 @@ const getAllUsers = async (query) => {
  * Cannot ban another admin.
  */
 const banUser = async (userId) => {
-  const user = await User.findById(userId);
+  const user = await User.findByPk(userId);
   if (!user) throw { status: 404, message: "User not found." };
   if (user.role === "ADMIN") {
     throw { status: 403, message: "Admin accounts cannot be banned." };
@@ -112,22 +144,30 @@ const banUser = async (userId) => {
     throw { status: 400, message: "User is already banned." };
   }
 
-  await User.setBanned(userId, true);
-  return User.findById(userId);
+  await user.update({ is_banned: true });
+  return {
+    ...user.toJSON(),
+    name: user.full_name,
+    phone: user.phone_number,
+  };
 };
 
 /**
  * Unban a user — restores their access.
  */
 const unbanUser = async (userId) => {
-  const user = await User.findById(userId);
+  const user = await User.findByPk(userId);
   if (!user) throw { status: 404, message: "User not found." };
   if (!user.is_banned) {
     throw { status: 400, message: "User is not banned." };
   }
 
-  await User.setBanned(userId, false);
-  return User.findById(userId);
+  await user.update({ is_banned: false });
+  return {
+    ...user.toJSON(),
+    name: user.full_name,
+    phone: user.phone_number,
+  };
 };
 
 /**
@@ -135,7 +175,7 @@ const unbanUser = async (userId) => {
  * Verified owners get a badge on their listings.
  */
 const verifyOwner = async (userId) => {
-  const user = await User.findById(userId);
+  const user = await User.findByPk(userId);
   if (!user) throw { status: 404, message: "User not found." };
   if (user.role !== "OWNER") {
     throw { status: 400, message: "Only owner accounts can be verified." };
@@ -144,8 +184,12 @@ const verifyOwner = async (userId) => {
     throw { status: 400, message: "Owner is already verified." };
   }
 
-  await User.setVerified(userId, true);
-  return User.findById(userId);
+  await user.update({ is_verified: true });
+  return {
+    ...user.toJSON(),
+    name: user.full_name,
+    phone: user.phone_number,
+  };
 };
 
 // ── ANALYTICS ─────────────────────────────────────────────────
@@ -154,21 +198,33 @@ const verifyOwner = async (userId) => {
  * Platform-wide analytics for the admin dashboard.
  */
 const getAnalytics = async () => {
-  // Run all queries concurrently for speed
   const [userCounts, roomStatusCounts, popularDistricts] = await Promise.all([
-    User.countByRole(),
-    Room.countByStatus(),
-    Room.popularDistricts(5),
+    User.findAll({
+      attributes: ["role", [sequelize.fn("COUNT", sequelize.col("role")), "total"]],
+      group: ["role"],
+      raw: true,
+    }),
+    Room.findAll({
+      attributes: ["approval_status", [sequelize.fn("COUNT", sequelize.col("approval_status")), "total"]],
+      group: ["approval_status"],
+      raw: true,
+    }),
+    Room.findAll({
+      where: { approval_status: "APPROVED" },
+      attributes: ["district", [sequelize.fn("COUNT", sequelize.col("district")), "total"]],
+      group: ["district"],
+      raw: true,
+      limit: 5,
+      order: [[sequelize.fn("COUNT", sequelize.col("district")), "DESC"]],
+    }),
   ]);
 
-  // Shape user counts into a clean object
   const users = { RENTER: 0, OWNER: 0, ADMIN: 0, total: 0 };
   for (const row of userCounts) {
-    users[row.role] = row.total;
-    users.total += row.total;
+    users[row.role] = Number(row.total);
+    users.total += Number(row.total);
   }
 
-  // Shape room counts into a clean object
   const rooms = {
     pending: 0,
     approved: 0,
@@ -178,8 +234,11 @@ const getAnalytics = async () => {
     total: 0,
   };
   for (const row of roomStatusCounts) {
-    rooms[row.status] = row.total;
-    rooms.total += row.total;
+    const key = String(row.approval_status).toLowerCase();
+    if (key === "approved") rooms.approved = Number(row.total);
+    else if (key === "rejected") rooms.rejected = Number(row.total);
+    else if (key === "pending") rooms.pending = Number(row.total);
+    rooms.total += Number(row.total);
   }
 
   return { users, rooms, popularDistricts };

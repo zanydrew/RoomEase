@@ -1,7 +1,5 @@
-const Conversation = require("../models/Conversation");
-const Message = require("../models/Message");
-const Room = require("../models/Room");
-const Notification = require("../models/Notification");
+const { Op } = require("sequelize");
+const { Conversation, Message, Room, Notification } = require("../models");
 
 // Auto-sent opening message when renter clicks "Chat Owner"
 const OPENING_MESSAGE =
@@ -15,61 +13,58 @@ const OPENING_MESSAGE =
  * Behaviour:
  * - If a conversation already exists for this room+renter+owner → return it
  * - If not → create it and auto-send the opening message
- *
- * This means clicking "Chat Owner" multiple times is always safe —
- * it never creates duplicate threads.
  */
 const startConversation = async (renterId, roomId) => {
-  const room = await Room.findById(roomId);
+  const room = await Room.findByPk(roomId);
   if (!room) {
     throw { status: 404, message: "Room not found." };
   }
-  if (room.status !== "approved") {
+  if (room.status !== "AVAILABLE" && room.approval_status !== "APPROVED") {
     throw { status: 400, message: "This room is not available." };
   }
   if (room.owner_id === renterId) {
     throw { status: 400, message: "You cannot chat with yourself." };
   }
 
-  // Find existing conversation or create a new one
-  const isNew = !(await checkConversationExists(
-    roomId,
-    renterId,
-    room.owner_id,
-  ));
-  const conversation = await Conversation.findOrCreate(
-    roomId,
-    renterId,
-    room.owner_id,
-  );
+  const existingConversation = await Conversation.findOne({
+    where: {
+      room_id: room.uuid,
+      renter_id: renterId,
+      owner_id: room.owner_id,
+    },
+  });
 
-  // Only auto-send the opening message for brand new conversations
-  if (isNew) {
-    await Message.create(conversation.id, renterId, OPENING_MESSAGE);
-    await Conversation.touch(conversation.id);
+  const conversation = existingConversation ||
+    (await Conversation.create({
+      room_id: room.uuid,
+      renter_id: renterId,
+      owner_id: room.owner_id,
+    }));
 
-    // Notify the owner
+  const messages = await Message.findAll({
+    where: { conversation_id: conversation.uuid },
+    order: [["created_at", "ASC"]],
+  });
+
+  if (!existingConversation) {
+    await Message.create({
+      conversation_id: conversation.uuid,
+      sender_id: renterId,
+      content: OPENING_MESSAGE,
+    });
+
     await Notification.create({
       user_id: room.owner_id,
       type: "new_message",
-      title: "New Message",
-      body: `Someone sent you a message about "${room.title}".`,
-      reference_id: conversation.id,
-      reference_type: "conversation",
+      message: `Someone sent you a message about "${room.title}".`,
+      reference_id: conversation.uuid,
     });
   }
 
-  // Return conversation with its messages
-  const messages = await Message.findByConversation(conversation.id);
-  return { conversation, messages };
-};
-
-// Helper — check if a conversation already exists
-const checkConversationExists = async (roomId, renterId, ownerId) => {
-  const conv = await Conversation.findOrCreate(roomId, renterId, ownerId);
-  // findOrCreate always returns a conversation, so we check if messages exist
-  const messages = await Message.findByConversation(conv.id);
-  return messages.length > 0;
+  return {
+    conversation: conversation.toJSON(),
+    messages: messages.map((message) => message.toJSON()),
+  };
 };
 
 // ── GET MY CONVERSATIONS (INBOX) ──────────────────────────────
@@ -79,7 +74,14 @@ const checkConversationExists = async (roomId, renterId, ownerId) => {
  * whether they are the renter or the owner in each thread.
  */
 const getMyConversations = async (userId) => {
-  return Conversation.findByUser(userId);
+  const conversations = await Conversation.findAll({
+    where: {
+      [Op.or]: [{ renter_id: userId }, { owner_id: userId }],
+    },
+    order: [["updated_at", "DESC"]],
+  });
+
+  return conversations.map((conversation) => conversation.toJSON());
 };
 
 // ── GET MESSAGES IN A CONVERSATION ───────────────────────────
@@ -90,23 +92,37 @@ const getMyConversations = async (userId) => {
  * Only participants (renter or owner) can read the conversation.
  */
 const getMessages = async (conversationId, userId) => {
-  const conversation = await Conversation.findById(conversationId);
+  const conversation = await Conversation.findByPk(conversationId);
   if (!conversation) {
     throw { status: 404, message: "Conversation not found." };
   }
 
-  // Only the two participants can read this conversation
   const isParticipant =
     conversation.renter_id === userId || conversation.owner_id === userId;
   if (!isParticipant) {
     throw { status: 403, message: "You are not part of this conversation." };
   }
 
-  // Mark all messages from the OTHER person as read
-  await Message.markRead(conversationId, userId);
+  await Message.update(
+    { is_read: true },
+    {
+      where: {
+        conversation_id: conversation.uuid,
+        sender_id: { [Op.ne]: userId },
+        is_read: false,
+      },
+    },
+  );
 
-  const messages = await Message.findByConversation(conversationId);
-  return { conversation, messages };
+  const messages = await Message.findAll({
+    where: { conversation_id: conversation.uuid },
+    order: [["created_at", "ASC"]],
+  });
+
+  return {
+    conversation: conversation.toJSON(),
+    messages: messages.map((message) => message.toJSON()),
+  };
 };
 
 // ── SEND A MESSAGE ────────────────────────────────────────────
@@ -120,29 +136,25 @@ const sendMessage = async (conversationId, senderId, content) => {
     throw { status: 400, message: "Message content cannot be empty." };
   }
 
-  const conversation = await Conversation.findById(conversationId);
+  const conversation = await Conversation.findByPk(conversationId);
   if (!conversation) {
     throw { status: 404, message: "Conversation not found." };
   }
 
-  // Only participants can send messages
   const isParticipant =
     conversation.renter_id === senderId || conversation.owner_id === senderId;
   if (!isParticipant) {
     throw { status: 403, message: "You are not part of this conversation." };
   }
 
-  // Save the message
-  const message = await Message.create(
-    conversationId,
-    senderId,
-    content.trim(),
-  );
+  const message = await Message.create({
+    conversation_id: conversation.uuid,
+    sender_id: senderId,
+    content: content.trim(),
+  });
 
-  // Bump the conversation's last_message_at so inbox sorts correctly
-  await Conversation.touch(conversationId);
+  await conversation.update({ updated_at: new Date() });
 
-  // Notify the OTHER participant
   const recipientId =
     conversation.renter_id === senderId
       ? conversation.owner_id
@@ -151,13 +163,11 @@ const sendMessage = async (conversationId, senderId, content) => {
   await Notification.create({
     user_id: recipientId,
     type: "new_message",
-    title: "New Message",
-    body: content.length > 60 ? content.substring(0, 60) + "…" : content,
-    reference_id: conversationId,
-    reference_type: "conversation",
+    message: content.length > 60 ? content.substring(0, 60) + "…" : content,
+    reference_id: conversation.uuid,
   });
 
-  return message;
+  return message.toJSON();
 };
 
 // ── MARK CONVERSATION AS READ ─────────────────────────────────
@@ -167,7 +177,7 @@ const sendMessage = async (conversationId, senderId, content) => {
  * marks all messages from the other person as read.
  */
 const markAsRead = async (conversationId, userId) => {
-  const conversation = await Conversation.findById(conversationId);
+  const conversation = await Conversation.findByPk(conversationId);
   if (!conversation) {
     throw { status: 404, message: "Conversation not found." };
   }
@@ -178,7 +188,16 @@ const markAsRead = async (conversationId, userId) => {
     throw { status: 403, message: "You are not part of this conversation." };
   }
 
-  await Message.markRead(conversationId, userId);
+  await Message.update(
+    { is_read: true },
+    {
+      where: {
+        conversation_id: conversation.uuid,
+        sender_id: { [Op.ne]: userId },
+        is_read: false,
+      },
+    },
+  );
 };
 
 module.exports = {

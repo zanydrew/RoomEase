@@ -1,12 +1,26 @@
 const app = require("./src/app");
-const { testConnection } = require("./src/config/db");
+const { sequelize } = require("./src/models");
+const PORT = process.env.PORT || 5000;
 
-const PORT = process.env.PORT;
-
-// Test DB connection on startup
-testConnection().then(() => {
-  app.listen(PORT, () => {
-    console.log(`🚀 RoomEase server running on http://localhost:${PORT}`);
-    console.log(`   Environment: ${process.env.NODE_ENV}`);
-  });
+// Prevent the server from crashing on unhandled errors
+process.on("unhandledRejection", (reason) => {
+  console.error("❌ Unhandled Promise Rejection:", reason);
 });
+
+process.on("uncaughtException", (err) => {
+  console.error("❌ Uncaught Exception:", err.message);
+});
+
+sequelize
+  .authenticate()
+  .then(() => {
+    console.log("✅ MySQL connected successfully");
+    app.listen(PORT, () => {
+      console.log(`🚀 RoomEase server running on http://localhost:${PORT}`);
+      console.log(`   Environment: ${process.env.NODE_ENV || "development"}`);
+    });
+  })
+  .catch((err) => {
+    console.error("❌ MySQL connection failed:", err.message);
+    process.exit(1);
+  });

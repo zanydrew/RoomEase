@@ -1,46 +1,46 @@
-const Favorite = require("../models/Favorite");
-const Room = require("../models/Room");
+const { SavedRoom, Room } = require("../models");
 
 // ── GET MY SAVED ROOMS ────────────────────────────────────────
 
 const getMyFavorites = async (userId) => {
-  const favorites = await Favorite.findByUser(userId);
-  return favorites;
+  const favorites = await SavedRoom.findAll({
+    where: { user_id: userId },
+    order: [["created_at", "DESC"]],
+  });
+  return favorites.map((f) => f.toJSON());
 };
 
 // ── SAVE A ROOM ───────────────────────────────────────────────
 
 const saveRoom = async (userId, roomId) => {
-  // Make sure the room exists and is approved before saving
-  const room = await Room.findById(roomId);
+  const room = await Room.findByPk(roomId);
   if (!room) {
     throw { status: 404, message: "Room not found." };
   }
-  if (room.status !== "approved") {
+  if (room.approval_status !== "APPROVED") {
     throw { status: 400, message: "This room is not available." };
   }
 
-  // Already saved? Just return without error — idempotent action
-  const already = await Favorite.exists(userId, roomId);
+  const already = await SavedRoom.findOne({ where: { user_id: userId, room_id: roomId } });
   if (already) {
     return { alreadySaved: true };
   }
 
-  await Favorite.create(userId, roomId);
+  await SavedRoom.create({ user_id: userId, room_id: roomId });
   return { alreadySaved: false };
 };
 
 // ── UNSAVE A ROOM ─────────────────────────────────────────────
 
 const unsaveRoom = async (userId, roomId) => {
-  await Favorite.remove(userId, roomId);
+  await SavedRoom.destroy({ where: { user_id: userId, room_id: roomId } });
 };
 
 // ── CHECK IF A ROOM IS SAVED ──────────────────────────────────
-// Used by the room detail page to show the correct heart icon state.
 
 const isSaved = async (userId, roomId) => {
-  return Favorite.exists(userId, roomId);
+  const record = await SavedRoom.findOne({ where: { user_id: userId, room_id: roomId } });
+  return record !== null;
 };
 
 module.exports = { getMyFavorites, saveRoom, unsaveRoom, isSaved };

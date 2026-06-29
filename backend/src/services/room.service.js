@@ -1,5 +1,5 @@
-const Room = require("../models/Room");
-const RoomImage = require("../models/RoomImage");
+const { Op } = require("sequelize");
+const { Room, RoomImage, sequelize } = require("../models");
 const {
   uploadToCloudinary,
   deleteFromCloudinary,
@@ -15,19 +15,42 @@ const { parsePagination } = require("../utils/pagination");
 const getAllRooms = async (query) => {
   const { limit, offset, page } = parsePagination(query);
 
-  const filters = {
-    status: "approved",
-    district: query.district || null,
-    room_type: query.room_type || null,
-    min_price: query.min_price ? parseFloat(query.min_price) : undefined,
-    max_price: query.max_price ? parseFloat(query.max_price) : undefined,
-    search: query.search || null,
+  const where = { status: "approved" };
+
+  if (query.district) {
+    where.district = query.district;
+  }
+
+  if (query.room_type) {
+    where.room_type = query.room_type;
+  }
+
+  if (query.min_price !== undefined) {
+    where.price_per_month = { [Op.gte]: parseFloat(query.min_price) };
+  }
+
+  if (query.max_price !== undefined) {
+    where.price_per_month = {
+      ...(where.price_per_month || {}),
+      [Op.lte]: parseFloat(query.max_price),
+    };
+  }
+
+  if (query.search) {
+    where[Op.or] = [
+      { title: { [Op.like]: `%${query.search}%` } },
+      { address: { [Op.like]: `%${query.search}%` } },
+    ];
+  }
+
+  const rooms = await Room.findAll({
+    where,
     limit,
     offset,
-  };
+    order: [["created_at", "DESC"]],
+  });
 
-  const rooms = await Room.findAll(filters);
-  return { rooms, page, limit };
+  return { rooms: rooms.map((room) => room.toJSON()), page, limit };
 };
 
 // ── GET OWNER'S OWN ROOMS ─────────────────────────────────────
@@ -39,14 +62,20 @@ const getAllRooms = async (query) => {
 const getOwnerRooms = async (ownerId, query) => {
   const { limit, offset, page } = parsePagination(query);
 
+  const where = { owner_id: ownerId };
+
+  if (query.status) {
+    where.status = query.status;
+  }
+
   const rooms = await Room.findAll({
-    owner_id: ownerId,
-    status: query.status || null, // owner can filter by status
+    where,
     limit,
     offset,
+    order: [["created_at", "DESC"]],
   });
 
-  return { rooms, page, limit };
+  return { rooms: rooms.map((room) => room.toJSON()), page, limit };
 };
 
 // ── GET SINGLE ROOM ───────────────────────────────────────────
@@ -56,36 +85,52 @@ const getOwnerRooms = async (ownerId, query) => {
  * Increments the view counter each time someone opens the detail page.
  */
 const getRoomById = async (id) => {
-  const room = await Room.findById(id);
+  const room = await Room.findByPk(id, {
+    include: [{ model: RoomImage, as: "images" }],
+  });
+
   if (!room) {
     throw { status: 404, message: "Room not found." };
   }
 
-  // Only count views on publicly visible rooms
   if (room.status === "approved") {
-    await Room.incrementViews(id);
+    await Room.update(
+      { views_count: sequelize.literal("views_count + 1") },
+      { where: { uuid: id } },
+    );
   }
 
-  // Attach all images (not just the primary one)
-  const images = await RoomImage.findByRoomId(id);
-  return { ...room, images };
+  return { ...room.toJSON(), images: room.images || [] };
 };
 
 // ── GET SIMILAR ROOMS ─────────────────────────────────────────
 
 const getSimilarRooms = async (roomId) => {
-  const room = await Room.findById(roomId);
+  const room = await Room.findByPk(roomId);
+
   if (!room) {
     throw { status: 404, message: "Room not found." };
   }
 
-  const similar = await Room.findSimilar(roomId, {
-    district: room.district,
-    price: room.price,
-    room_type: room.room_type,
+  const similar = await Room.findAll({
+    where: {
+      uuid: { [Op.ne]: roomId },
+      status: "approved",
+      [Op.or]: [
+        { district: room.district },
+        { room_type: room.room_type },
+        {
+          price_per_month: {
+            [Op.between]: [room.price_per_month * 0.7, room.price_per_month * 1.3],
+          },
+        },
+      ],
+    },
+    limit: 6,
+    order: [["created_at", "DESC"]],
   });
 
-  return similar;
+  return similar.map((item) => item.toJSON());
 };
 
 // ── CREATE ROOM ───────────────────────────────────────────────
@@ -99,7 +144,6 @@ const createRoom = async (ownerId, body) => {
     title,
     description,
     price,
-    price_unit,
     address,
     district,
     city,
@@ -107,11 +151,8 @@ const createRoom = async (ownerId, body) => {
     longitude,
     room_type,
     size_sqm,
-    amenities,
-    nearby_places,
   } = body;
 
-  // Required field validation
   if (!title || !price || !address || !room_type) {
     throw {
       status: 400,
@@ -135,20 +176,22 @@ const createRoom = async (ownerId, body) => {
     owner_id: ownerId,
     title,
     description,
-    price: parseFloat(price),
-    price_unit,
+    price_per_month: parseFloat(price),
+    deposit: body.deposit ? parseFloat(body.deposit) : 0,
     address,
     district,
     city,
-    latitude: latitude ? parseFloat(latitude) : null,
-    longitude: longitude ? parseFloat(longitude) : null,
+    location: sequelize.fn(
+      "ST_GeomFromText",
+      `POINT(${longitude || 0} ${latitude || 0})`,
+    ),
     room_type,
     size_sqm: size_sqm ? parseFloat(size_sqm) : null,
-    amenities: Array.isArray(amenities) ? amenities : [],
-    nearby_places: Array.isArray(nearby_places) ? nearby_places : [],
+    status: "AVAILABLE",
+    approval_status: "PENDING",
   });
 
-  return room;
+  return room.toJSON();
 };
 
 // ── UPDATE ROOM ───────────────────────────────────────────────
@@ -158,29 +201,37 @@ const createRoom = async (ownerId, body) => {
  * Verifies ownership before allowing the update.
  */
 const updateRoom = async (roomId, ownerId, body) => {
-  const room = await Room.findById(roomId);
+  const room = await Room.findByPk(roomId);
 
   if (!room) {
     throw { status: 404, message: "Room not found." };
   }
 
-  // Ownership check — owners can only edit their own rooms
   if (room.owner_id !== ownerId) {
     throw { status: 403, message: "You can only edit your own listings." };
   }
 
-  // Cannot edit a room that's been rented or banned
-  if (room.status === "rented" || room.status === "inactive") {
+  if (room.status === "RENTED" || room.status === "INACTIVE") {
     throw { status: 400, message: "This listing can no longer be edited." };
   }
 
-  // Editing an approved room sends it back to pending for re-review
-  if (room.status === "approved") {
-    await Room.setStatus(roomId, "pending");
+  const updates = {};
+
+  if (body.title !== undefined) updates.title = body.title;
+  if (body.description !== undefined) updates.description = body.description;
+  if (body.price !== undefined) updates.price_per_month = parseFloat(body.price);
+  if (body.address !== undefined) updates.address = body.address;
+  if (body.district !== undefined) updates.district = body.district;
+  if (body.city !== undefined) updates.city = body.city;
+  if (body.room_type !== undefined) updates.room_type = body.room_type;
+  if (body.size_sqm !== undefined) updates.size_sqm = parseFloat(body.size_sqm);
+
+  if (room.status === "AVAILABLE") {
+    await room.update({ approval_status: "PENDING" });
   }
 
-  const updated = await Room.update(roomId, body);
-  return updated;
+  const updated = await room.update(updates);
+  return updated.toJSON();
 };
 
 // ── DELETE ROOM ───────────────────────────────────────────────
@@ -190,7 +241,7 @@ const updateRoom = async (roomId, ownerId, body) => {
  * Also cleans up all images from Cloudinary.
  */
 const deleteRoom = async (roomId, ownerId) => {
-  const room = await Room.findById(roomId);
+  const room = await Room.findByPk(roomId);
 
   if (!room) {
     throw { status: 404, message: "Room not found." };
@@ -200,8 +251,7 @@ const deleteRoom = async (roomId, ownerId) => {
     throw { status: 403, message: "You can only delete your own listings." };
   }
 
-  // Remove all images from Cloudinary first
-  const images = await RoomImage.removeAllByRoom(roomId);
+  const images = await RoomImage.findAll({ where: { room_id: room.uuid } });
   for (const img of images) {
     await deleteFromCloudinary(img.cloudinary_public_id).catch(() => {
       console.warn(
@@ -210,13 +260,13 @@ const deleteRoom = async (roomId, ownerId) => {
     });
   }
 
-  await Room.remove(roomId);
+  await room.destroy();
 };
 
 // ── MARK AS RENTED ────────────────────────────────────────────
 
 const markAsRented = async (roomId, ownerId) => {
-  const room = await Room.findById(roomId);
+  const room = await Room.findByPk(roomId);
 
   if (!room) {
     throw { status: 404, message: "Room not found." };
@@ -226,8 +276,8 @@ const markAsRented = async (roomId, ownerId) => {
     throw { status: 403, message: "You can only update your own listings." };
   }
 
-  await Room.setStatus(roomId, "rented");
-  return Room.findById(roomId);
+  await room.update({ status: "RENTED" });
+  return (await Room.findByPk(roomId)).toJSON();
 };
 
 // ── UPLOAD IMAGES ─────────────────────────────────────────────
@@ -245,7 +295,7 @@ const uploadImages = async (roomId, ownerId, files) => {
     throw { status: 400, message: "No image files provided." };
   }
 
-  const room = await Room.findById(roomId);
+  const room = await Room.findByPk(roomId);
   if (!room) {
     throw { status: 404, message: "Room not found." };
   }
@@ -257,8 +307,7 @@ const uploadImages = async (roomId, ownerId, files) => {
     };
   }
 
-  // Check how many images already exist — max 10 per room
-  const existingImages = await RoomImage.findByRoomId(roomId);
+  const existingImages = await RoomImage.findAll({ where: { room_id: room.uuid } });
   if (existingImages.length + files.length > 10) {
     throw {
       status: 400,
@@ -268,30 +317,29 @@ const uploadImages = async (roomId, ownerId, files) => {
 
   const hasPrimary = existingImages.some((img) => img.is_primary);
 
-  // Upload all files to Cloudinary concurrently
   const uploaded = await Promise.all(
     files.map((file, index) =>
       uploadToCloudinary(file.buffer, "roomease/rooms").then(
         ({ url, public_id }) => ({
-          room_id: roomId,
+          room_id: room.uuid,
           image_url: url,
           cloudinary_public_id: public_id,
-          // First image becomes primary if no primary exists yet
           is_primary: !hasPrimary && index === 0,
-          display_order: existingImages.length + index,
+          sort_order: existingImages.length + index,
         }),
       ),
     ),
   );
 
-  await RoomImage.createMany(uploaded);
-  return RoomImage.findByRoomId(roomId);
+  await RoomImage.bulkCreate(uploaded);
+  const images = await RoomImage.findAll({ where: { room_id: room.uuid } });
+  return images.map((image) => image.toJSON());
 };
 
 // ── DELETE IMAGE ──────────────────────────────────────────────
 
 const deleteImage = async (roomId, imageId, ownerId) => {
-  const room = await Room.findById(roomId);
+  const room = await Room.findByPk(roomId);
   if (!room) throw { status: 404, message: "Room not found." };
   if (room.owner_id !== ownerId) {
     throw {
@@ -300,21 +348,21 @@ const deleteImage = async (roomId, imageId, ownerId) => {
     };
   }
 
-  const deleted = await RoomImage.remove(imageId);
+  const deleted = await RoomImage.findByPk(imageId);
   if (!deleted) throw { status: 404, message: "Image not found." };
 
-  // Remove from Cloudinary
   await deleteFromCloudinary(deleted.cloudinary_public_id).catch(() => {
     console.warn(
       `Could not delete image from Cloudinary: ${deleted.cloudinary_public_id}`,
     );
   });
 
-  // If the deleted image was the primary, promote the next one
+  await deleted.destroy();
+
   if (deleted.is_primary) {
-    const remaining = await RoomImage.findByRoomId(roomId);
+    const remaining = await RoomImage.findAll({ where: { room_id: room.uuid } });
     if (remaining.length > 0) {
-      await RoomImage.setPrimary(remaining[0].id, roomId);
+      await remaining[0].update({ is_primary: true });
     }
   }
 };
@@ -322,14 +370,16 @@ const deleteImage = async (roomId, imageId, ownerId) => {
 // ── SET PRIMARY IMAGE ─────────────────────────────────────────
 
 const setPrimaryImage = async (roomId, imageId, ownerId) => {
-  const room = await Room.findById(roomId);
+  const room = await Room.findByPk(roomId);
   if (!room) throw { status: 404, message: "Room not found." };
   if (room.owner_id !== ownerId) {
     throw { status: 403, message: "You can only update your own listings." };
   }
 
-  await RoomImage.setPrimary(imageId, roomId);
-  return RoomImage.findByRoomId(roomId);
+  await RoomImage.update({ is_primary: false }, { where: { room_id: room.uuid } });
+  await RoomImage.update({ is_primary: true }, { where: { uuid: imageId, room_id: room.uuid } });
+  const images = await RoomImage.findAll({ where: { room_id: room.uuid } });
+  return images.map((image) => image.toJSON());
 };
 
 module.exports = {

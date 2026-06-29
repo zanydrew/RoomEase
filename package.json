@@ -1,0 +1,27 @@
+{
+  "name": "roomease",
+  "version": "1.0.0",
+  "description": "��#\u0000 \u0000R\u0000o\u0000o\u0000m\u0000E\u0000a\u0000s\u0000e\u0000\r\u0000 \u0000",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zanydrew/RoomEase.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/zanydrew/RoomEase/issues"
+  },
+  "homepage": "https://github.com/zanydrew/RoomEase#readme",
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "mysql2": "^3.22.5",
+    "sequelize": "^6.37.8"
+  }
+}
