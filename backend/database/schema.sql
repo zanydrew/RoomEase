@@ -1,6 +1,7 @@
 
 -- Create Database (Optional)
-GRANT ALL PRIVILEGES ON roomEase.* TO 'chhoungech'@'localhost'; FLUSH PRIVILEGES;
+create database roomEase;
+use roomEase;
 -- -----------------------------------------------------
 -- 1. Table: USERS
 -- -----------------------------------------------------
