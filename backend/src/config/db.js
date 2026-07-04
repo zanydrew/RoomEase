@@ -2,7 +2,6 @@
 
 
 const { Sequelize } = require('sequelize');
-const { DataTypes } = require('sequelize');
 
 const sequelize = new Sequelize({
   host: process.env.DB_HOST,
@@ -14,19 +13,4 @@ const sequelize = new Sequelize({
 });
 
 
-
-/**
- * Tests the database connection on startup.
- * Exits the process if the connection fails.
- */
-const testConnection = async () => {
-  try {
-    await sequelize.authenticate();
-    console.log("✅ MySQL connected successfully");
-  } catch (err) {
-    console.error("❌ MySQL connection failed:", err.message);
-    process.exit(1);
-  }
-};
-
-module.exports = { sequelize, testConnection };
+module.exports = { sequelize, };

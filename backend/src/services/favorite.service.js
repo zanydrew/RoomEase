@@ -17,7 +17,7 @@ const saveRoom = async (userId, roomId) => {
   if (!room) {
     throw { status: 404, message: "Room not found." };
   }
-  if (room.approval_status !== "APPROVED") {
+  if (room.approval_status !== "APPROVED" || room.status !== "AVAILABLE") {
     throw { status: 400, message: "This room is not available." };
   }
 

@@ -75,7 +75,7 @@ const updateAvatar = async (userId, fileBuffer) => {
   if (currentUser.avatar_url) {
     const urlParts = currentUser.avatar_url.split("/upload/")[1];
     if (urlParts) {
-      const publicId = urlParts.replace(/\.[^/.]+$/, "");
+      const publicId = urlParts.replace(/^v\d+\//, "").replace(/\.[^/.]+$/, "");
       await deleteFromCloudinary(publicId).catch(() => {
         console.warn(`Could not delete old avatar: ${publicId}`);
       });

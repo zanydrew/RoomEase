@@ -1,5 +1,5 @@
 const { Op } = require("sequelize");
-const { Conversation, Message, Room, Notification } = require("../models");
+const { Conversation, Message, Room } = require("../models");
 
 // Auto-sent opening message when renter clicks "Chat Owner"
 const OPENING_MESSAGE =
@@ -19,7 +19,7 @@ const startConversation = async (renterId, roomId) => {
   if (!room) {
     throw { status: 404, message: "Room not found." };
   }
-  if (room.status !== "AVAILABLE" && room.approval_status !== "APPROVED") {
+  if (room.approval_status !== "APPROVED" || room.status !== "AVAILABLE") {
     throw { status: 400, message: "This room is not available." };
   }
   if (room.owner_id === renterId) {
@@ -41,23 +41,18 @@ const startConversation = async (renterId, roomId) => {
       owner_id: room.owner_id,
     }));
 
-  const messages = await Message.findAll({
-    where: { conversation_id: conversation.uuid },
-    order: [["created_at", "ASC"]],
-  });
-
+  let messages;
   if (!existingConversation) {
-    await Message.create({
+    const openingMsg = await Message.create({
       conversation_id: conversation.uuid,
       sender_id: renterId,
       content: OPENING_MESSAGE,
     });
-
-    await Notification.create({
-      user_id: room.owner_id,
-      type: "new_message",
-      message: `Someone sent you a message about "${room.title}".`,
-      reference_id: conversation.uuid,
+    messages = [openingMsg];
+  } else {
+    messages = await Message.findAll({
+      where: { conversation_id: conversation.uuid },
+      order: [["created_at", "ASC"]],
     });
   }
 
@@ -159,13 +154,6 @@ const sendMessage = async (conversationId, senderId, content) => {
     conversation.renter_id === senderId
       ? conversation.owner_id
       : conversation.renter_id;
-
-  await Notification.create({
-    user_id: recipientId,
-    type: "new_message",
-    message: content.length > 60 ? content.substring(0, 60) + "…" : content,
-    reference_id: conversation.uuid,
-  });
 
   return message.toJSON();
 };

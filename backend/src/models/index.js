@@ -29,8 +29,6 @@ const Message          = require('./Message')(sequelize);
 const Review           = require('./Review')(sequelize);
 const University       = require('./University')(sequelize);
 const NearbyUniversity = require('./NearbyUniversity')(sequelize);
-const Notification     = require('./Notification')(sequelize);
-const SearchHistory    = require('./SearchHistory')(sequelize);
 
 // ── Associations ─────────────────────────────────────────────────────────────
 
@@ -84,13 +82,7 @@ Review.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 Room.belongsToMany(University, { through: NearbyUniversity, foreignKey: 'room_id', otherKey: 'university_id', as: 'nearbyUniversities' });
 University.belongsToMany(Room, { through: NearbyUniversity, foreignKey: 'university_id', otherKey: 'room_id', as: 'nearbyRooms' });
 
-// Notifications
-User.hasMany(Notification, { foreignKey: 'user_id', as: 'notifications' });
-Notification.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
-// SearchHistory
-User.hasMany(SearchHistory, { foreignKey: 'user_id', as: 'searchHistory' });
-SearchHistory.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
 module.exports = {
   sequelize,
@@ -106,6 +98,4 @@ module.exports = {
   Review,
   University,
   NearbyUniversity,
-  Notification,
-  SearchHistory,
 };

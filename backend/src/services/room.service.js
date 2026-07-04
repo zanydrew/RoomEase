@@ -1,5 +1,5 @@
 const { Op } = require("sequelize");
-const { Room, RoomImage, sequelize } = require("../models");
+const { Room, RoomImage, University, sequelize } = require("../models");
 const {
   uploadToCloudinary,
   deleteFromCloudinary,
@@ -15,7 +15,7 @@ const { parsePagination } = require("../utils/pagination");
 const getAllRooms = async (query) => {
   const { limit, offset, page } = parsePagination(query);
 
-  const where = { status: "approved" };
+  const where = { approval_status: "APPROVED", status: "AVAILABLE" };
 
   if (query.district) {
     where.district = query.district;
@@ -43,8 +43,20 @@ const getAllRooms = async (query) => {
     ];
   }
 
+  const include = {};
+
+  if (query.university_id) {
+    include = {
+      model: University,
+      as: "nearbyUniversities",
+      where: { id: parseInt(query.university_id) },
+      attributes: [],
+    };
+  }
+
   const rooms = await Room.findAll({
     where,
+    include,
     limit,
     offset,
     order: [["created_at", "DESC"]],
@@ -93,7 +105,7 @@ const getRoomById = async (id) => {
     throw { status: 404, message: "Room not found." };
   }
 
-  if (room.status === "approved") {
+  if (room.approval_status === "APPROVED") {
     await Room.update(
       { views_count: sequelize.literal("views_count + 1") },
       { where: { uuid: id } },
@@ -115,7 +127,8 @@ const getSimilarRooms = async (roomId) => {
   const similar = await Room.findAll({
     where: {
       uuid: { [Op.ne]: roomId },
-      status: "approved",
+      approval_status: "APPROVED",
+      status: "AVAILABLE",
       [Op.or]: [
         { district: room.district },
         { room_type: room.room_type },
@@ -143,7 +156,7 @@ const createRoom = async (ownerId, body) => {
   const {
     title,
     description,
-    price,
+    price_per_month,
     address,
     district,
     city,
@@ -153,18 +166,18 @@ const createRoom = async (ownerId, body) => {
     size_sqm,
   } = body;
 
-  if (!title || !price || !address || !room_type) {
+  if (!title || !price_per_month || !address || !room_type || !size_sqm) {
     throw {
       status: 400,
-      message: "Title, price, address, and room type are required.",
+      message: "Title, price_per_month, address, room_type, and size_sqm are required.",
     };
   }
 
-  if (isNaN(price) || parseFloat(price) <= 0) {
+  if (isNaN(price_per_month) || parseFloat(price_per_month) <= 0) {
     throw { status: 400, message: "Price must be a positive number." };
   }
 
-  const validTypes = ["single", "shared", "studio", "apartment"];
+  const validTypes = ["STUDIO", "1BR", "2BR", "SHARED"];
   if (!validTypes.includes(room_type)) {
     throw {
       status: 400,
@@ -176,7 +189,7 @@ const createRoom = async (ownerId, body) => {
     owner_id: ownerId,
     title,
     description,
-    price_per_month: parseFloat(price),
+    price_per_month: parseFloat(price_per_month),
     deposit: body.deposit ? parseFloat(body.deposit) : 0,
     address,
     district,
@@ -186,7 +199,6 @@ const createRoom = async (ownerId, body) => {
       `POINT(${longitude || 0} ${latitude || 0})`,
     ),
     room_type,
-    size_sqm: size_sqm ? parseFloat(size_sqm) : null,
     status: "AVAILABLE",
     approval_status: "PENDING",
   });

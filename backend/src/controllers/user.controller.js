@@ -29,7 +29,7 @@ const getProfileById = async (req, res) => {
 const updateProfile = async (req, res) => {
   try {
     const { name, phone, preferred_lang } = req.body;
-    const updated = await userService.updateProfile(req.user.id, {
+    const updated = await userService.updateProfile(req.user.uuid, {
       name,
       phone,
       preferred_lang,
@@ -50,7 +50,7 @@ const updateAvatar = async (req, res) => {
     }
 
     const updated = await userService.updateAvatar(
-      req.user.id,
+      req.user.uuid,
       req.file.buffer,
     );
     return success(res, { user: updated }, "Avatar updated successfully.");
@@ -69,7 +69,7 @@ const changePassword = async (req, res) => {
       return error(res, "Current password and new password are required.", 400);
     }
 
-    await userService.changePassword(req.user.id, {
+    await userService.changePassword(req.user.uuid, {
       currentPassword,
       newPassword,
     });

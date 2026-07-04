@@ -1,10 +1,10 @@
-const { ViewingRequest, Room, Notification } = require("../models");
+const { ViewingRequest, Room } = require("../models");
 
 // ── REQUEST A VIEWING ─────────────────────────────────────────
 
 const requestViewing = async (
   renterId,
-  { room_id, requested_date, requested_time, notes },
+  { room_id, requested_date, requested_time, renter_note },
 ) => {
   if (!room_id || !requested_date || !requested_time) {
     throw { status: 400, message: "Room, date, and time are required." };
@@ -12,7 +12,7 @@ const requestViewing = async (
 
   const room = await Room.findByPk(room_id);
   if (!room) throw { status: 404, message: "Room not found." };
-  if (room.approval_status !== "APPROVED") {
+  if (room.approval_status !== "APPROVED" || room.status !== "AVAILABLE") {
     throw { status: 400, message: "This room is not available for viewing." };
   }
   if (room.owner_id === renterId) {
@@ -31,14 +31,7 @@ const requestViewing = async (
     owner_id: room.owner_id,
     requested_date,
     requested_time,
-    notes: notes || null,
-  });
-
-  await Notification.create({
-    user_id: room.owner_id,
-    type: "viewing_request",
-    message: `Someone wants to view "${room.title}" on ${requested_date} at ${requested_time}.`,
-    reference_id: viewing.uuid,
+    notes: renter_note || null,
   });
 
   return viewing.toJSON();
@@ -82,14 +75,6 @@ const acceptViewing = async (viewingId, ownerId) => {
 
   await viewing.update({ status: "APPROVED" });
 
-  const room = await Room.findByPk(viewing.room_id);
-  await Notification.create({
-    user_id: viewing.renter_id,
-    type: "viewing_accepted",
-    message: `Your viewing for "${room ? room.title : "the room"}" on ${viewing.requested_date} has been accepted.`,
-    reference_id: viewing.uuid,
-  });
-
   return viewing.toJSON();
 };
 
@@ -107,16 +92,6 @@ const rejectViewing = async (viewingId, ownerId, notes) => {
 
   await viewing.update({ status: "REJECTED", notes: notes || viewing.notes });
 
-  const room = await Room.findByPk(viewing.room_id);
-  await Notification.create({
-    user_id: viewing.renter_id,
-    type: "viewing_rejected",
-    message: notes
-      ? `Your viewing for "${room ? room.title : "the room"}" was rejected. Reason: ${notes}`
-      : `Your viewing request for "${room ? room.title : "the room"}" was rejected.`,
-    reference_id: viewing.uuid,
-  });
-
   return viewing.toJSON();
 };
 
@@ -125,7 +100,7 @@ const rejectViewing = async (viewingId, ownerId, notes) => {
 const suggestTime = async (
   viewingId,
   ownerId,
-  { suggested_date, suggested_time, notes },
+  { suggested_date, suggested_time, owner_note },
 ) => {
   if (!suggested_date || !suggested_time) {
     throw { status: 400, message: "Suggested date and time are required." };
@@ -150,15 +125,7 @@ const suggestTime = async (
     status: "SUGGESTED",
     suggested_date,
     suggested_time,
-    notes: notes || viewing.notes,
-  });
-
-  const room = await Room.findByPk(viewing.room_id);
-  await Notification.create({
-    user_id: viewing.renter_id,
-    type: "viewing_suggested",
-    message: `The owner suggested ${suggested_date} at ${suggested_time} for "${room ? room.title : "the room"}".`,
-    reference_id: viewing.uuid,
+    notes: owner_note || viewing.notes,
   });
 
   return viewing.toJSON();

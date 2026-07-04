@@ -12,7 +12,7 @@ const startConversation = async (req, res) => {
       return error(res, "room_id is required.", 400);
     }
 
-    const result = await chatService.startConversation(req.user.id, room_id);
+    const result = await chatService.startConversation(req.user.uuid, room_id);
     return success(res, result, "Conversation ready.", 201);
   } catch (err) {
     return error(res, err.message, err.status || 500);
@@ -24,7 +24,7 @@ const startConversation = async (req, res) => {
 // Works for both renters and owners.
 const getMyConversations = async (req, res) => {
   try {
-    const conversations = await chatService.getMyConversations(req.user.id);
+    const conversations = await chatService.getMyConversations(req.user.uuid);
     return success(res, { conversations }, "OK");
   } catch (err) {
     return error(res, err.message, err.status || 500);
@@ -36,7 +36,7 @@ const getMyConversations = async (req, res) => {
 // Also marks unread messages as read automatically.
 const getMessages = async (req, res) => {
   try {
-    const result = await chatService.getMessages(req.params.id, req.user.id);
+    const result = await chatService.getMessages(req.params.id, req.user.uuid);
     return success(res, result, "OK");
   } catch (err) {
     return error(res, err.message, err.status || 500);
@@ -55,7 +55,7 @@ const sendMessage = async (req, res) => {
 
     const message = await chatService.sendMessage(
       req.params.id,
-      req.user.id,
+      req.user.uuid,
       content,
     );
     return success(res, { message }, "Message sent.", 201);
@@ -68,7 +68,7 @@ const sendMessage = async (req, res) => {
 // Mark all messages in a conversation as read for the caller.
 const markAsRead = async (req, res) => {
   try {
-    await chatService.markAsRead(req.params.id, req.user.id);
+    await chatService.markAsRead(req.params.id, req.user.uuid);
     return success(res, null, "Messages marked as read.");
   } catch (err) {
     return error(res, err.message, err.status || 500);

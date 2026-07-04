@@ -6,12 +6,12 @@ const { success, error } = require("../utils/response");
 const requestViewing = async (req, res) => {
   try {
     const { room_id, requested_date, requested_time, renter_note } = req.body;
-    const viewing = await viewingService.requestViewing(req.user.id, {
-      room_id,
-      requested_date,
-      requested_time,
-      renter_note,
-    });
+      const viewing = await viewingService.requestViewing(req.user.uuid, {
+        room_id,
+        requested_date,
+        requested_time,
+        renter_note,
+      });
     return success(res, { viewing }, "Viewing request sent successfully.", 201);
   } catch (err) {
     return error(res, err.message, err.status || 500);
@@ -24,7 +24,7 @@ const requestViewing = async (req, res) => {
 const getMyRequests = async (req, res) => {
   try {
     const viewings = await viewingService.getMyRequests(
-      req.user.id,
+      req.user.uuid,
       req.query.status,
     );
     return success(res, { viewings }, "OK");
@@ -39,7 +39,7 @@ const getMyRequests = async (req, res) => {
 const getIncomingRequests = async (req, res) => {
   try {
     const viewings = await viewingService.getIncomingRequests(
-      req.user.id,
+      req.user.uuid,
       req.query.status,
     );
     return success(res, { viewings }, "OK");
@@ -53,7 +53,7 @@ const acceptViewing = async (req, res) => {
   try {
     const viewing = await viewingService.acceptViewing(
       req.params.id,
-      req.user.id,
+      req.user.uuid,
     );
     return success(res, { viewing }, "Viewing request accepted.");
   } catch (err) {
@@ -66,7 +66,7 @@ const rejectViewing = async (req, res) => {
   try {
     const viewing = await viewingService.rejectViewing(
       req.params.id,
-      req.user.id,
+      req.user.uuid,
       req.body.owner_note,
     );
     return success(res, { viewing }, "Viewing request rejected.");
@@ -81,7 +81,7 @@ const suggestTime = async (req, res) => {
     const { suggested_date, suggested_time, owner_note } = req.body;
     const viewing = await viewingService.suggestTime(
       req.params.id,
-      req.user.id,
+      req.user.uuid,
       {
         suggested_date,
         suggested_time,
@@ -97,7 +97,7 @@ const suggestTime = async (req, res) => {
 // ── PUT /api/viewings/:id/cancel ──────────────────────────────
 const cancelViewing = async (req, res) => {
   try {
-    await viewingService.cancelViewing(req.params.id, req.user.id);
+    await viewingService.cancelViewing(req.params.id, req.user.uuid);
     return success(res, null, "Viewing request cancelled.");
   } catch (err) {
     return error(res, err.message, err.status || 500);

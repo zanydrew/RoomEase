@@ -1,62 +1,197 @@
 const express = require("express");
 const router = express.Router();
-const authService = require("../services/auth.service");
+const authController = require("../controllers/auth.controller");
 const verifyToken = require("../middlewares/verifyToken");
-const { success, error } = require("../utils/response");
-
-// ── POST /api/auth/register ───────────────────────────────────
-const register = async (req, res) => {
-  try {
-    const { full_name, email, password, role } = req.body;
-
-    if (!full_name || !email || !password || !role) {
-      return error(res, "full_name, email, password, and role are required.", 400);
-    }
-
-    const { user, token } = await authService.register({
-      full_name,
-      email,
-      password,
-      role,
-    });
-
-    return success(res, { user, token }, "Account created successfully.", 201);
-  } catch (err) {
-    return error(res, err.message, err.status || 500);
-  }
-};
-
-// ── POST /api/auth/login ──────────────────────────────────────
-const login = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return error(res, "Email and password are required.", 400);
-    }
-
-    const { user, token } = await authService.login({ email, password });
-
-    return success(res, { user, token }, "Logged in successfully.");
-  } catch (err) {
-    return error(res, err.message, err.status || 500);
-  }
-};
-
-// ── GET /api/auth/me ──────────────────────────────────────────
-// verifyToken middleware already validated the token and
-// attached the user to req.user — nothing left to do here
-// except return that user.
-const getMe = async (req, res) => {
-  try {
-    return success(res, { user: req.user }, "OK");
-  } catch (err) {
-    return error(res, err.message, 500);
-  }
-};
 
 module.exports = router;
 
-router.post("/register", register);
-router.post("/login", login);
-router.get("/me", verifyToken, getMe);
+/**
+ * @swagger
+ * /api/auth/register:
+ *   post:
+ *     summary: Register a new user account
+ *     description: Registers a new user account (Renter, Owner, or Admin). Hashes password via bcrypt.
+ *     tags:
+ *       - Auth
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - full_name
+ *               - email
+ *               - password
+ *               - role
+ *             properties:
+ *               full_name:
+ *                 type: string
+ *                 description: Legal name of the user
+ *                 example: John Doe
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: Unique registration email
+ *                 example: johndoe@example.com
+ *               password:
+ *                 type: string
+ *                 format: password
+ *                 description: Plaintext password
+ *                 example: Password123!
+ *               role:
+ *                 type: string
+ *                 enum: [RENTER, OWNER, ADMIN]
+ *                 description: User role
+ *                 example: RENTER
+ *     responses:
+ *       201:
+ *         description: Account created successfully. Returns the user profile object and fresh JWT token.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Account created successfully.
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       type: object
+ *                       properties:
+ *                         uuid:
+ *                           type: string
+ *                           format: uuid
+ *                         full_name:
+ *                           type: string
+ *                         email:
+ *                           type: string
+ *                         role:
+ *                           type: string
+ *                     token:
+ *                       type: string
+ *       400:
+ *         description: Missing required fields or email already exists.
+ *       500:
+ *         description: Internal Server Error.
+ */
+router.post("/register", authController.register);
+
+/**
+ * @swagger
+ * /api/auth/login:
+ *   post:
+ *     summary: Authenticate credentials
+ *     description: Authenticates email and password credentials, returning the user profile and session token.
+ *     tags:
+ *       - Auth
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: Registered account email
+ *                 example: johndoe@example.com
+ *               password:
+ *                 type: string
+ *                 format: password
+ *                 description: Account password
+ *                 example: Password123!
+ *     responses:
+ *       200:
+ *         description: Logged in successfully. Returns authenticated user profile details and active session JWT token.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Logged in successfully.
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       type: object
+ *                       properties:
+ *                         uuid:
+ *                           type: string
+ *                           format: uuid
+ *                         full_name:
+ *                           type: string
+ *                         email:
+ *                           type: string
+ *                         role:
+ *                           type: string
+ *                     token:
+ *                       type: string
+ *       400:
+ *         description: Email and password are required.
+ *       401:
+ *         description: Invalid email or password.
+ *       500:
+ *         description: Internal Server Error.
+ */
+router.post("/login", authController.login);
+
+/**
+ * @swagger
+ * /api/auth/me:
+ *   get:
+ *     summary: Get current session user details
+ *     description: Resolves and returns the user profile payload corresponding to the sent JWT token.
+ *     tags:
+ *       - Auth
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Current authenticated user metadata.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: OK
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       type: object
+ *                       properties:
+ *                         uuid:
+ *                           type: string
+ *                           format: uuid
+ *                         full_name:
+ *                           type: string
+ *                         email:
+ *                           type: string
+ *                         role:
+ *                           type: string
+ *       401:
+ *         description: Access token is missing or invalid.
+ *       500:
+ *         description: Internal Server Error.
+ */
+router.get("/me", verifyToken, authController.getMe);

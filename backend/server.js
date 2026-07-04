@@ -12,7 +12,7 @@ process.on("uncaughtException", (err) => {
 });
 
 sequelize
-  .authenticate()
+  .sync({ alter: false }) // Use { force: true } to drop and recreate tables, or { alter: true } to update tables without dropping
   .then(() => {
     console.log("✅ MySQL connected successfully");
     app.listen(PORT, () => {

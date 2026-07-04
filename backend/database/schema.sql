@@ -266,24 +266,7 @@ CREATE TABLE IF NOT EXISTS `NEARBY_UNIVERSITIES` (
     ON UPDATE CASCADE
 ) ENGINE = InnoDB;
 
--- -----------------------------------------------------
--- 13. Table: NOTIFICATIONS
--- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `NOTIFICATIONS` (
-  `uuid` VARCHAR(36) NOT NULL,
-  `user_id` VARCHAR(36) NOT NULL,
-  `type` VARCHAR(50) NOT NULL,
-  `reference_id` VARCHAR(36) NULL,
-  `message` TEXT NOT NULL,
-  `is_read` BOOLEAN NOT NULL DEFAULT FALSE,
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`uuid`),
-  CONSTRAINT `fk_notifications_user`
-    FOREIGN KEY (`user_id`)
-    REFERENCES `USERS` (`uuid`)
-    ON DELETE CASCADE
-    ON UPDATE CASCADE
-) ENGINE = InnoDB;
+
 
 -- -----------------------------------------------------
 -- 14. Table: SEARCH_HISTORY
@@ -311,7 +294,6 @@ CREATE TABLE IF NOT EXISTS `SEARCH_HISTORY` (
 CREATE INDEX idx_rooms_owner    ON ROOMS(owner_id);
 CREATE INDEX idx_rooms_search   ON ROOMS(approval_status, status, district, price_per_month);
 CREATE INDEX idx_messages_conv  ON MESSAGES(conversation_id, created_at);
-CREATE INDEX idx_notif_user     ON NOTIFICATIONS(user_id, is_read, created_at DESC);
 CREATE INDEX idx_conv_renter    ON CONVERSATIONS(renter_id, updated_at DESC);
 CREATE INDEX idx_conv_owner     ON CONVERSATIONS(owner_id, updated_at DESC);
 
@@ -2103,109 +2085,6 @@ INSERT INTO `NEARBY_UNIVERSITIES` (room_id,university_id,distance_km,walk_minute
   ('fe883555-8bc3-49ea-a1da-16a3d041f032',4,3.67,45),
   ('fe883555-8bc3-49ea-a1da-16a3d041f032',5,0.36,4),
   ('e8dd518b-9626-471e-9db7-fe480cba6277',8,4.66,58);
-
--- NOTIFICATIONS
-INSERT INTO `NOTIFICATIONS` (uuid,user_id,type,reference_id,message,is_read,created_at) VALUES
-  ('c0133dc2-cdb7-4ac6-b8a0-0434335469fb','f0f82ee5-63ec-42f1-8b4a-36c65cd46dd5','VIEWING_APPROVED','b444ccaf-3fe7-43a7-ab47-193819a373e0','Your viewing request has been approved.',0,'2026-05-12 06:35:38'),
-  ('e74775ef-a3a9-488c-a6f6-ce41f97ec469','b8e0f3b8-875e-4108-a434-61c55a75ed5b','NEW_REVIEW','8f240436-3cde-4776-adc6-a615b71f4e1d','Someone left a review on your room.',1,'2026-06-20 06:35:38'),
-  ('52012355-d886-4b27-9ab4-cc1f9bdec62a','f84b914e-9c61-4e4f-b8b8-0662cabf915a','NEW_REVIEW','fbca94bd-0155-406f-8033-84bb1f4ae5c9','Someone left a review on your room.',0,'2026-03-26 06:35:38'),
-  ('34c88925-8463-486d-ad5a-b14a19ade8bd','f16e7b4f-acce-4a31-b239-7a493017a689','VIEWING_APPROVED','6a8d4e57-7f22-48cf-b5f6-7a56085cb45c','Your viewing request has been approved.',0,'2026-04-22 06:35:38'),
-  ('931c3414-fbae-4f17-803d-67f03cdd8482','e36c4a02-059d-4a69-aa5b-5dd1029eba5a','VIEWING_APPROVED','947471fb-0c39-45c8-ac95-81ce460eeaf6','Your viewing request has been approved.',0,'2026-04-20 06:35:38'),
-  ('4c4dbd20-20f3-40e8-8274-6969e21341a8','a85e5df6-d0df-4343-951a-d1f18aad9d77','ROOM_APPROVED','c735207c-190f-4c54-948a-a610e6b3c7aa','Your room listing has been approved.',1,'2026-04-04 06:35:38'),
-  ('0724922b-8fd9-45d0-a32c-bf13f9652b59','5a43d6f1-70c1-4ed0-a3e7-fd98f1231ff3','VIEWING_REJECTED','2b2aefcc-3692-4fb1-ab87-11beffc51948','Your viewing request was declined.',0,'2026-04-17 06:35:38'),
-  ('639a5e60-fa9b-498d-ab12-b4f9769deebb','3242b1bb-0bb4-47f5-8bf8-9471187b5c9b','VIEWING_REQUEST','10159f8c-5652-4188-9730-f8d2971b314b','A renter wants to view your room.',1,'2026-06-14 06:35:38'),
-  ('5761f948-e6b6-4692-8ad2-ab1f2a6a980c','5cae85cb-6054-4919-80b6-f6031dbf3534','VIEWING_REQUEST','c9d302ae-1f1a-48db-8bad-f0a70d194992','A renter wants to view your room.',1,'2026-04-30 06:35:38'),
-  ('cf6a4f17-a843-49a1-9a84-930e3de98d9a','a359ba03-f9a7-4092-9c91-e9da09754c42','VIEWING_REQUEST','32620c46-d793-491a-96ba-5e259dffb20d','A renter wants to view your room.',0,'2026-06-06 06:35:38'),
-  ('795fc971-7879-4d99-910c-47faa3ba8dda','ec9b1752-967a-4a66-b47a-bcba2901a1f5','VIEWING_REJECTED','c689756e-1c26-4303-a485-4ccd6e456db2','Your viewing request was declined.',1,'2026-05-15 06:35:38'),
-  ('2e95c11c-035c-423a-aee3-4382fe2a514e','d167c517-8a4c-45f4-83e3-ef33bd9866d0','VIEWING_REQUEST','d8c0821c-b5d4-45cc-85bc-e91094848a63','A renter wants to view your room.',1,'2026-05-02 06:35:38'),
-  ('77c2d344-b280-45e4-b52e-58362e88da71','dec0e5de-3f31-41f2-8f58-fb71600dc5b6','NEW_MESSAGE','32041676-0421-4c7d-8515-e71c16833bd4','You have a new message.',0,'2026-05-11 06:35:38'),
-  ('6b71f6ba-0cab-40fd-947d-06c0d08851d4','0f80f7bb-0152-44e4-be71-96449760ffba','ROOM_APPROVED','5a1512d7-ea56-4c62-b1e8-251d0fc45bcd','Your room listing has been approved.',1,'2026-05-17 06:35:38'),
-  ('816f6f5c-4d2b-42ef-a536-76b23230c9a7','2e4fbdbd-ce84-4e5c-81a5-eada651b2048','NEW_REVIEW','79161b9c-f59d-49c1-b30b-faa402b78579','Someone left a review on your room.',1,'2026-05-31 06:35:38'),
-  ('b40ce683-ccc1-4fbb-a3db-3ab5d7762c5b','ec9b1752-967a-4a66-b47a-bcba2901a1f5','ROOM_APPROVED','e2a6316a-8632-4e13-b906-f8d89d977cfe','Your room listing has been approved.',0,'2026-05-12 06:35:38'),
-  ('ca969980-4a68-4ca6-9a26-495a7397582c','97540b66-1c7f-46b9-adfc-814d0f857fd2','ROOM_APPROVED','24cc6731-89cd-41dc-b3b4-0794680c805b','Your room listing has been approved.',0,'2026-03-27 06:35:38'),
-  ('4273c232-21e0-4c5d-a720-753cdcadf6d1','07a55d25-7f29-4ae0-827a-7371e292c792','VIEWING_APPROVED','b91b2250-c232-46a8-b8b3-50103cf05a03','Your viewing request has been approved.',0,'2026-04-22 06:35:38'),
-  ('a6b2d87b-d7be-4574-8c13-29cc8abe8f05','f16e7b4f-acce-4a31-b239-7a493017a689','VIEWING_REJECTED','d31d0af4-d151-4d44-ab45-8140192d0343','Your viewing request was declined.',0,'2026-05-30 06:35:38'),
-  ('48f3e581-ad0e-4005-b68b-3a8c4dc48bb5','dec0e5de-3f31-41f2-8f58-fb71600dc5b6','VIEWING_REJECTED','09d89686-5deb-45ee-bb3c-4de98fef4eaa','Your viewing request was declined.',1,'2026-05-23 06:35:38'),
-  ('9c738cdb-a33f-4220-bbf3-5e7b39910c18','e5d14242-4e88-4003-8abd-59e7160aeabd','NEW_REVIEW','1b10228c-1a33-4d55-822d-a067152e4970','Someone left a review on your room.',1,'2026-04-15 06:35:38'),
-  ('9f39dc08-065d-4ebd-9a57-95867d5f988e','e36c4a02-059d-4a69-aa5b-5dd1029eba5a','VIEWING_REJECTED','5dc7f18a-2812-4930-976f-ddc3b9784700','Your viewing request was declined.',0,'2026-05-13 06:35:38'),
-  ('155cbdef-2a36-4596-a615-d533c071911a','179309ac-4569-438b-8926-72baaf5fb4b2','VIEWING_REJECTED','877c6664-f3f8-4a42-8ef8-3a928bf8adb1','Your viewing request was declined.',0,'2026-04-14 06:35:38'),
-  ('64344c9d-bcc0-4ac7-aba1-f90cb17073e5','6553bcc1-0794-4f19-8d19-748eab479e98','VIEWING_REJECTED','dd98ce7f-9ef8-462c-9678-c140c2a47cbc','Your viewing request was declined.',0,'2026-06-16 06:35:38'),
-  ('4eeb6bb9-3d1c-4b83-9615-4b936cc1c27b','9317f130-3624-48b4-bcb5-a57d45f98178','NEW_REVIEW','79161b9c-f59d-49c1-b30b-faa402b78579','Someone left a review on your room.',0,'2026-03-26 06:35:38'),
-  ('01bc1b24-c2c9-41ba-8809-a2c33d2bb58c','bbc36ffb-ffc3-43ac-b71b-83525beacdf5','VIEWING_APPROVED','a91170a8-7c1e-4ec8-ab94-7c0c1d85a5a1','Your viewing request has been approved.',0,'2026-04-26 06:35:38'),
-  ('99233430-9486-4e25-9752-45999964a211','8c8ccd5c-dea0-40c4-9bb3-3e9be2a08e7e','VIEWING_REQUEST','ad63b934-de01-4660-b192-12448a904749','A renter wants to view your room.',0,'2026-04-12 06:35:38'),
-  ('d575d3af-9cc9-4b2a-8650-6d65da182485','f16e7b4f-acce-4a31-b239-7a493017a689','VIEWING_REQUEST','5dc7f18a-2812-4930-976f-ddc3b9784700','A renter wants to view your room.',1,'2026-04-15 06:35:38'),
-  ('b4e54362-6e55-4aaa-b167-001d07037010','6d511d3a-8802-4249-a9ff-a680b0e044e9','ROOM_APPROVED','25507fff-072c-474b-83a0-6b859b2a3cc1','Your room listing has been approved.',0,'2026-03-21 06:35:38'),
-  ('0288efd0-44ef-4612-b5b2-ba81d99b9756','d3eff5db-9b4a-469c-af6f-e419d9d67590','NEW_MESSAGE','5a1512d7-ea56-4c62-b1e8-251d0fc45bcd','You have a new message.',0,'2026-06-12 06:35:38'),
-  ('e20ef701-c12e-4630-bc94-1dcc861af16d','694f7095-ccee-42e1-a21d-b8f90f920223','VIEWING_REJECTED','5cd2fec3-4850-4bf8-9102-e1e62134432e','Your viewing request was declined.',0,'2026-04-07 06:35:38'),
-  ('a6c7a43c-0428-447e-b077-922fdbaf15c8','0949570c-e2d0-4061-9fdc-42698cb9df69','VIEWING_REQUEST','723ec80e-6dc9-4732-aeeb-ab8de7eab109','A renter wants to view your room.',0,'2026-04-21 06:35:38'),
-  ('650dd383-96cd-4d50-93c3-b3d7bf438362','dec0e5de-3f31-41f2-8f58-fb71600dc5b6','VIEWING_APPROVED','c59db587-b206-4838-a1b3-66aab95a890f','Your viewing request has been approved.',1,'2026-06-08 06:35:38'),
-  ('760f4074-9e1f-44bb-8455-ef9f9672b052','b5134063-e3a0-460a-9dbc-ab6abc7e13c9','NEW_MESSAGE','57d51e93-ba08-43cd-9b3c-92e43341a444','You have a new message.',0,'2026-06-08 06:35:38'),
-  ('1d7f3707-c2d2-4dc1-bd6a-e3b508a475fb','45e1ccc3-0eea-495b-ad4f-7e8cf946f70c','VIEWING_APPROVED','35bd39df-0e73-43bf-a92b-b8dad399e1dc','Your viewing request has been approved.',0,'2026-05-01 06:35:38'),
-  ('d9deba46-6e8d-4ce0-8ce6-97fec6addb0b','5cae85cb-6054-4919-80b6-f6031dbf3534','NEW_REVIEW','902dec74-917a-4096-b280-3aa71f80a41b','Someone left a review on your room.',0,'2026-05-30 06:35:38'),
-  ('e3620c03-cbc5-4aed-91ac-e9162e53c3ef','492d9542-dc49-4e7e-9191-ae6dd442aa4d','ROOM_APPROVED','24cc6731-89cd-41dc-b3b4-0794680c805b','Your room listing has been approved.',0,'2026-06-11 06:35:38'),
-  ('17d2eec5-ab49-45d3-b186-143ee4ec9737','6d511d3a-8802-4249-a9ff-a680b0e044e9','NEW_MESSAGE','b35038c3-6f94-4c9f-bcb8-3ff2b4f0d0c4','You have a new message.',1,'2026-03-24 06:35:38'),
-  ('f3aae698-520f-458e-9124-be8b1ef9a542','ec9b1752-967a-4a66-b47a-bcba2901a1f5','VIEWING_APPROVED','c689756e-1c26-4303-a485-4ccd6e456db2','Your viewing request has been approved.',0,'2026-06-17 06:35:38'),
-  ('b14c53d3-8d4d-489f-8d8d-a8704f490769','b5134063-e3a0-460a-9dbc-ab6abc7e13c9','ROOM_APPROVED','5a1512d7-ea56-4c62-b1e8-251d0fc45bcd','Your room listing has been approved.',1,'2026-06-11 06:35:38'),
-  ('3ef140da-c89c-43b5-a6ad-fb34d96c2c5b','593f8338-a05e-4274-84df-3d1cfaf0affd','VIEWING_REJECTED','1b10228c-1a33-4d55-822d-a067152e4970','Your viewing request was declined.',0,'2026-04-26 06:35:38'),
-  ('09ff71ce-0d95-4d7d-8c59-040238a73bf0','694f7095-ccee-42e1-a21d-b8f90f920223','ROOM_APPROVED','ad63b934-de01-4660-b192-12448a904749','Your room listing has been approved.',0,'2026-04-17 06:35:38'),
-  ('3c3c47ac-8d11-49f9-9401-6655a06a825c','c14aebfb-8143-473e-b515-9d80c6e66a48','NEW_REVIEW','20739778-b9e8-4363-8d30-e0687c4adeab','Someone left a review on your room.',0,'2026-06-18 06:35:38'),
-  ('bfaee529-66f6-47d8-acf4-4510c926cd08','3e20359e-3eef-43f6-a359-4bd951e98fd2','NEW_MESSAGE','af21b5ec-f5f7-443d-bcfa-9fc56f003066','You have a new message.',1,'2026-04-15 06:35:38'),
-  ('bfae56d2-643e-4c67-933b-366a19b5aae4','17eafe69-8be3-4396-8f87-62363ea0b70b','VIEWING_APPROVED','9a6d802b-6e3b-47f9-87b8-b35fff0393ec','Your viewing request has been approved.',0,'2026-05-04 06:35:38'),
-  ('5ed30c63-4ea9-4a35-a94e-bf7767c439cf','d3eff5db-9b4a-469c-af6f-e419d9d67590','NEW_MESSAGE','c735207c-190f-4c54-948a-a610e6b3c7aa','You have a new message.',0,'2026-05-14 06:35:38'),
-  ('e8eeae03-d047-48c8-839b-62972a169ad9','694f7095-ccee-42e1-a21d-b8f90f920223','NEW_REVIEW','dccae1c8-1f6e-4143-917f-a099f86eb545','Someone left a review on your room.',0,'2026-06-06 06:35:38'),
-  ('b746d818-3ae9-4a7d-8d58-a564c68577e5','d0cc1727-eb5f-4ac8-8af7-b1d291bee5b8','NEW_MESSAGE','504a1e31-5358-4768-9cb1-1a38c93b5bab','You have a new message.',1,'2026-06-09 06:35:38'),
-  ('b731ed73-df3e-49f1-b12f-9de4cc1c5091','24ab7eb8-c05b-44f8-9c2d-3567fa026e39','ROOM_APPROVED','11822530-61af-4dfe-86ac-8e551e205d04','Your room listing has been approved.',0,'2026-04-01 06:35:38'),
-  ('be5e1ec0-c3ae-4893-a98d-81f33218ca76','a7923b0d-17f9-464d-8140-32e8b6818016','NEW_MESSAGE','e881d8c5-26c8-489a-a096-ec1c7a5ca94e','You have a new message.',1,'2026-06-17 06:35:38'),
-  ('610d90a4-5378-4aab-81f1-cc69c0913977','2428036e-a122-4d1f-b76c-b93eac676d8b','VIEWING_APPROVED','20739778-b9e8-4363-8d30-e0687c4adeab','Your viewing request has been approved.',1,'2026-06-09 06:35:38'),
-  ('cc6bab79-e898-4597-9750-76f733718a50','c46c7456-6a7d-4972-bfae-4bd83f69a294','NEW_MESSAGE','3659ad3b-ccd4-4105-a3ea-bf2cc2452484','You have a new message.',1,'2026-06-13 06:35:38'),
-  ('b9f4e338-c37d-4f5f-9dd2-18ba91b31aa8','97540b66-1c7f-46b9-adfc-814d0f857fd2','NEW_MESSAGE','b35038c3-6f94-4c9f-bcb8-3ff2b4f0d0c4','You have a new message.',0,'2026-05-16 06:35:38'),
-  ('70d10721-3be4-4272-aefd-f64061635c86','554b4c7f-71b9-4047-ad37-b4c2ca8aa5cb','VIEWING_REJECTED','c1664b85-9e82-45d0-bde8-f3d5701c0243','Your viewing request was declined.',0,'2026-04-19 06:35:38'),
-  ('1aa6cd4a-15bd-4cfa-ac4f-1c5613fb82e6','f84463a8-e8b4-43ce-91db-a20dd39180a6','NEW_REVIEW','32041676-0421-4c7d-8515-e71c16833bd4','Someone left a review on your room.',0,'2026-04-09 06:35:38'),
-  ('62920a6a-e693-47bf-ab10-3440238f65e5','c6007366-d637-45ea-a59e-595d35327c58','VIEWING_REQUEST','5197a005-e931-4e0e-8f46-d4fdc96c95bb','A renter wants to view your room.',1,'2026-04-03 06:35:38'),
-  ('a89ac753-2b80-4980-8e1f-426f233fe4ff','0949570c-e2d0-4061-9fdc-42698cb9df69','VIEWING_APPROVED','cc2b885f-4aef-439f-9f66-f2bec659cf27','Your viewing request has been approved.',1,'2026-04-21 06:35:38'),
-  ('533e8795-f40a-458e-840f-837821191e67','8d73bfca-01d2-4bee-95a1-8f7e6f5cd041','VIEWING_APPROVED','2c2e65b6-ac85-4eeb-a9f2-6c29b06b763e','Your viewing request has been approved.',0,'2026-05-22 06:35:38'),
-  ('f4510ec8-6104-43ca-9d69-ee02637fd180','8c8ccd5c-dea0-40c4-9bb3-3e9be2a08e7e','VIEWING_REJECTED','9ecc0065-7553-49fe-9dcf-a6fc14d16a98','Your viewing request was declined.',0,'2026-06-21 06:35:38'),
-  ('e9832ffe-11fb-4d87-9f83-25113325227e','694f7095-ccee-42e1-a21d-b8f90f920223','ROOM_APPROVED','2b2a7851-bffb-4191-af4e-8417074dbabd','Your room listing has been approved.',0,'2026-05-09 06:35:38'),
-  ('458d9608-4ad0-4c26-975d-03bb4bb244f2','f84b914e-9c61-4e4f-b8b8-0662cabf915a','VIEWING_REQUEST','482ec36b-53c6-4c85-848a-a8bc5b53ec66','A renter wants to view your room.',1,'2026-05-12 06:35:38'),
-  ('120d1382-3e33-4bcf-bd7a-b519651b29dc','57f765f9-2717-490a-a764-d46657a7baf4','VIEWING_APPROVED','aae599cb-1de9-4bbd-8268-d09f6f55e1b3','Your viewing request has been approved.',1,'2026-05-09 06:35:38'),
-  ('149be8f8-0dca-4c36-9630-9381acac03f4','0949570c-e2d0-4061-9fdc-42698cb9df69','VIEWING_REJECTED','ebcc6c52-d217-4365-8b5e-2789391e511e','Your viewing request was declined.',1,'2026-06-15 06:35:38'),
-  ('5d1dee11-3b73-4dc0-9ae8-e3f1abeb6451','2ad1f054-0cdf-497d-b782-6f4c071a1531','NEW_MESSAGE','b91b2250-c232-46a8-b8b3-50103cf05a03','You have a new message.',1,'2026-06-16 06:35:38'),
-  ('017d7e1a-57bf-4ca4-8560-125856dc9279','f8115c5c-1878-4c99-abbe-0795b2e72abb','VIEWING_REJECTED','902dec74-917a-4096-b280-3aa71f80a41b','Your viewing request was declined.',0,'2026-04-17 06:35:38'),
-  ('5ec48ee7-1a9f-4479-8592-fc3c910c2ac2','57f765f9-2717-490a-a764-d46657a7baf4','VIEWING_REQUEST','3c5b3fee-5998-4f69-9f21-ba52dff18a60','A renter wants to view your room.',0,'2026-04-21 06:35:38'),
-  ('69dc23d9-49f9-4ead-8ee0-d62dc2a3f959','b1e1d2bb-febb-48e0-bb91-5e0b70d77b50','NEW_MESSAGE','30395760-2181-48d5-bfeb-b2146346cc3f','You have a new message.',0,'2026-03-24 06:35:38'),
-  ('45087e4d-f2ef-4a74-9000-a67b32259a00','57f765f9-2717-490a-a764-d46657a7baf4','VIEWING_REJECTED','fe883555-8bc3-49ea-a1da-16a3d041f032','Your viewing request was declined.',1,'2026-05-13 06:35:38'),
-  ('81220dd2-49ed-4e62-97af-d36903f91fe9','8aac427d-d132-4792-9b7d-81130e3c303c','NEW_MESSAGE','e8dd518b-9626-471e-9db7-fe480cba6277','You have a new message.',0,'2026-04-24 06:35:38'),
-  ('af31223b-2e8c-4fc8-81c4-323d994ffeaf','09f500ef-0e78-4256-bd00-000a198fe0ea','NEW_MESSAGE','2b2aefcc-3692-4fb1-ab87-11beffc51948','You have a new message.',0,'2026-05-09 06:35:38'),
-  ('30a0d81a-6a72-4dc8-8ece-b2774fac0d7a','3242b1bb-0bb4-47f5-8bf8-9471187b5c9b','VIEWING_APPROVED','60ed4506-ea82-4f47-b72c-ca0667abda5c','Your viewing request has been approved.',0,'2026-06-08 06:35:38'),
-  ('c8a1a429-a703-4e00-b378-f7faa994c06e','850d9e0c-a01d-498e-8871-5e74b1b8590e','NEW_MESSAGE','482ec36b-53c6-4c85-848a-a8bc5b53ec66','You have a new message.',0,'2026-06-16 06:35:38'),
-  ('61d47304-c130-4a2d-adf9-bd625bc1c6c7','0949570c-e2d0-4061-9fdc-42698cb9df69','VIEWING_REQUEST','bde4f9b5-6f78-46dd-8426-ff7d0e9e4708','A renter wants to view your room.',1,'2026-04-10 06:35:38'),
-  ('32fe67d8-45d0-4c6e-a661-157280e125af','e03a30ff-5d94-49d1-92ca-7ae817c17c7e','VIEWING_REQUEST','11822530-61af-4dfe-86ac-8e551e205d04','A renter wants to view your room.',0,'2026-05-28 06:35:38'),
-  ('28ff44fd-f6f7-472d-a5f5-81c0835d5663','a7923b0d-17f9-464d-8140-32e8b6818016','NEW_REVIEW','32620c46-d793-491a-96ba-5e259dffb20d','Someone left a review on your room.',0,'2026-04-11 06:35:38'),
-  ('08627b38-2dfb-4efd-923d-faeac786b920','97540b66-1c7f-46b9-adfc-814d0f857fd2','NEW_MESSAGE','c59db587-b206-4838-a1b3-66aab95a890f','You have a new message.',0,'2026-06-01 06:35:38'),
-  ('0c955195-b8a9-4d55-9d9e-16e4b5cc06c0','179309ac-4569-438b-8926-72baaf5fb4b2','VIEWING_REQUEST','cc2b885f-4aef-439f-9f66-f2bec659cf27','A renter wants to view your room.',1,'2026-04-01 06:35:38'),
-  ('8e0e9cba-9b3f-4ba6-8012-a4522d5e08eb','179309ac-4569-438b-8926-72baaf5fb4b2','VIEWING_REJECTED','3f31be5e-9857-4c8a-9313-f1ed118d2dfc','Your viewing request was declined.',1,'2026-03-29 06:35:38'),
-  ('d83f3573-3e56-4050-a150-fb29690525e9','179309ac-4569-438b-8926-72baaf5fb4b2','NEW_REVIEW','5a1512d7-ea56-4c62-b1e8-251d0fc45bcd','Someone left a review on your room.',0,'2026-04-05 06:35:38'),
-  ('8a67a827-06fb-4b5b-b62a-84617bc29c49','d167c517-8a4c-45f4-83e3-ef33bd9866d0','NEW_REVIEW','87bc47aa-3a71-4d32-bc89-95a7bfde7590','Someone left a review on your room.',0,'2026-04-17 06:35:38'),
-  ('cbfa5408-4477-4984-99ec-14595f428c5e','eb1f6382-6185-4ed4-8ae9-a2d69b64bec4','NEW_REVIEW','8c2193a3-4951-43da-8fe3-9a2755194fe5','Someone left a review on your room.',0,'2026-06-09 06:35:38'),
-  ('3e8134f4-7dce-426d-8b3c-332dce1bea1a','74349d93-5a97-4bde-904a-292bbaa14493','VIEWING_REQUEST','dd6e9b7f-d9f2-4efe-88b1-d657483c33b4','A renter wants to view your room.',0,'2026-05-06 06:35:38'),
-  ('e31dc406-9def-4fff-904a-60ae218b4fc8','f16e7b4f-acce-4a31-b239-7a493017a689','ROOM_APPROVED','504a1e31-5358-4768-9cb1-1a38c93b5bab','Your room listing has been approved.',1,'2026-04-07 06:35:38'),
-  ('35991056-1a3c-4397-a598-f8e75a1c1bdd','7aa7ddfd-3bcd-4cbe-ada2-0f2ec55db3d8','VIEWING_REQUEST','07c8aec8-45ee-4a04-8cf4-047e894f9f93','A renter wants to view your room.',0,'2026-06-14 06:35:38'),
-  ('607aafa1-d900-4eb3-a8d8-d05f795b8c99','1775165e-e4cd-4256-bef6-5e039a573473','VIEWING_REJECTED','dccae1c8-1f6e-4143-917f-a099f86eb545','Your viewing request was declined.',1,'2026-04-10 06:35:38'),
-  ('cb7f3900-aff7-415c-b982-db55a38184aa','a720cb5d-0462-48f2-86e7-a4953d8d5242','NEW_MESSAGE','79161b9c-f59d-49c1-b30b-faa402b78579','You have a new message.',1,'2026-05-29 06:35:38'),
-  ('f8c4c7c7-8bf2-4a34-9d57-4731b256c3e6','6553bcc1-0794-4f19-8d19-748eab479e98','NEW_REVIEW','11822530-61af-4dfe-86ac-8e551e205d04','Someone left a review on your room.',1,'2026-06-24 06:35:38'),
-  ('765ee528-a9b4-46a6-885b-35298a7a2a69','6d511d3a-8802-4249-a9ff-a680b0e044e9','NEW_MESSAGE','5197a005-e931-4e0e-8f46-d4fdc96c95bb','You have a new message.',0,'2026-06-10 06:35:38'),
-  ('4132b489-85c7-4125-b7e1-7db453c41027','a720cb5d-0462-48f2-86e7-a4953d8d5242','NEW_REVIEW','b35038c3-6f94-4c9f-bcb8-3ff2b4f0d0c4','Someone left a review on your room.',1,'2026-04-05 06:35:38'),
-  ('3d4060f9-19d9-4ef1-8162-419fc66f85fc','1775165e-e4cd-4256-bef6-5e039a573473','NEW_MESSAGE','19eeea3f-2a45-4492-9dd0-d939b0471b0d','You have a new message.',0,'2026-04-28 06:35:38'),
-  ('19d7e3ee-d77b-45c7-af0d-81e082bb3fa8','d167c517-8a4c-45f4-83e3-ef33bd9866d0','VIEWING_REJECTED','c735207c-190f-4c54-948a-a610e6b3c7aa','Your viewing request was declined.',0,'2026-06-23 06:35:38'),
-  ('1bd0cc71-87b7-4fc8-bcf3-d0bb6c504dae','c46c7456-6a7d-4972-bfae-4bd83f69a294','ROOM_APPROVED','b52e1e40-021f-4756-83f4-73e44e1d426c','Your room listing has been approved.',0,'2026-05-30 06:35:38'),
-  ('82f8092a-c14f-4a85-b03e-465cdb6db2a0','a359ba03-f9a7-4092-9c91-e9da09754c42','VIEWING_REQUEST','82a25648-01fd-41fd-809b-8f08aa400ddb','A renter wants to view your room.',0,'2026-06-19 06:35:38'),
-  ('b29a257b-dbd9-49d3-bd1f-94e6c3b4d699','f46ae936-dd6e-44ee-a5a9-318db8622647','VIEWING_REJECTED','e2d863e4-63e5-4c2c-824d-0331fa184abd','Your viewing request was declined.',0,'2026-03-31 06:35:38'),
-  ('573fb0ac-33e3-4e01-9538-c8852acb1488','d606d815-af6f-440a-8039-64af48c4a294','NEW_MESSAGE','20739778-b9e8-4363-8d30-e0687c4adeab','You have a new message.',0,'2026-05-07 06:35:38'),
-  ('74e8d61e-3dd7-40e6-a8d1-f66f15fbcad5','a720cb5d-0462-48f2-86e7-a4953d8d5242','VIEWING_APPROVED','b1ec203d-5d72-45dc-a14c-2ba0fa13872e','Your viewing request has been approved.',0,'2026-03-27 06:35:38'),
-  ('2b382551-63fb-4fc5-87b1-3b4d58222243','850d9e0c-a01d-498e-8871-5e74b1b8590e','NEW_MESSAGE','e2d863e4-63e5-4c2c-824d-0331fa184abd','You have a new message.',1,'2026-04-15 06:35:38'),
-  ('67dc2ca8-b3de-4263-aa23-43f9a279fd8f','554b4c7f-71b9-4047-ad37-b4c2ca8aa5cb','NEW_REVIEW','fbca94bd-0155-406f-8033-84bb1f4ae5c9','Someone left a review on your room.',1,'2026-03-29 06:35:38'),
-  ('ac69590e-9438-4fdb-88a7-cd03683224e3','12e7f61f-5362-4448-9c51-15e078b836f7','VIEWING_APPROVED','b0bbceea-79c4-4d51-9959-f76d857dca9d','Your viewing request has been approved.',0,'2026-04-30 06:35:38'),
-  ('6689dc04-0ad3-48cf-9231-d882ba7cd054','6fb00870-837f-485f-8237-b618c46e9eb3','VIEWING_APPROVED','bde4f9b5-6f78-46dd-8426-ff7d0e9e4708','Your viewing request has been approved.',1,'2026-05-08 06:35:38');
 
 -- SEARCH_HISTORY
 INSERT INTO `SEARCH_HISTORY` (uuid,user_id,keyword,city,district,min_price,max_price,room_type,searched_at) VALUES

@@ -17,7 +17,7 @@ const getAllRooms = async (req, res) => {
 // Owner only — get all their own listings (all statuses).
 const getOwnerRooms = async (req, res) => {
   try {
-    const result = await roomService.getOwnerRooms(req.user.id, req.query);
+    const result = await roomService.getOwnerRooms(req.user.uuid, req.query);
     return success(res, result, "OK");
   } catch (err) {
     return error(res, err.message, err.status || 500);
@@ -50,7 +50,7 @@ const getSimilarRooms = async (req, res) => {
 // Owner only — create a new room listing (starts as pending).
 const createRoom = async (req, res) => {
   try {
-    const room = await roomService.createRoom(req.user.id, req.body);
+    const room = await roomService.createRoom(req.user.uuid, req.body);
     return success(
       res,
       { room },
@@ -68,7 +68,7 @@ const updateRoom = async (req, res) => {
   try {
     const room = await roomService.updateRoom(
       req.params.id,
-      req.user.id,
+      req.user.uuid,
       req.body,
     );
     return success(
@@ -85,7 +85,7 @@ const updateRoom = async (req, res) => {
 // Owner only — delete their own room + all its images.
 const deleteRoom = async (req, res) => {
   try {
-    await roomService.deleteRoom(req.params.id, req.user.id);
+    await roomService.deleteRoom(req.params.id, req.user.uuid);
     return success(res, null, "Room deleted successfully.");
   } catch (err) {
     return error(res, err.message, err.status || 500);
@@ -96,7 +96,7 @@ const deleteRoom = async (req, res) => {
 // Owner only — mark their room as rented.
 const markAsRented = async (req, res) => {
   try {
-    const room = await roomService.markAsRented(req.params.id, req.user.id);
+    const room = await roomService.markAsRented(req.params.id, req.user.uuid);
     return success(res, { room }, "Room marked as rented.");
   } catch (err) {
     return error(res, err.message, err.status || 500);
@@ -110,7 +110,7 @@ const uploadImages = async (req, res) => {
   try {
     const images = await roomService.uploadImages(
       req.params.id,
-      req.user.id,
+      req.user.uuid,
       req.files,
     );
     return success(res, { images }, "Images uploaded successfully.", 201);
@@ -126,7 +126,7 @@ const deleteImage = async (req, res) => {
     await roomService.deleteImage(
       req.params.id,
       req.params.imageId,
-      req.user.id,
+      req.user.uuid,
     );
     return success(res, null, "Image deleted successfully.");
   } catch (err) {
@@ -141,7 +141,7 @@ const setPrimaryImage = async (req, res) => {
     const images = await roomService.setPrimaryImage(
       req.params.id,
       req.params.imageId,
-      req.user.id,
+      req.user.uuid,
     );
     return success(res, { images }, "Primary image updated.");
   } catch (err) {

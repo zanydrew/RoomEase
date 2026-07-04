@@ -1,4 +1,4 @@
-const { Room, User, Notification } = require("../models");
+const { Room, User, sequelize } = require("../models");
 const { parsePagination } = require("../utils/pagination");
 
 // ── ROOM MODERATION ───────────────────────────────────────────
@@ -57,13 +57,6 @@ const approveRoom = async (roomId) => {
 
   await room.update({ approval_status: "APPROVED", status: "AVAILABLE" });
 
-  await Notification.create({
-    user_id: room.owner_id,
-    type: "room_approved",
-    message: `"${room.title}" has been approved and is now publicly visible.`,
-    reference_id: room.uuid,
-  });
-
   return (await Room.findByPk(roomId)).toJSON();
 };
 
@@ -83,13 +76,6 @@ const rejectRoom = async (roomId, rejection_reason) => {
   }
 
   await room.update({ approval_status: "REJECTED" });
-
-  await Notification.create({
-    user_id: room.owner_id,
-    type: "room_rejected",
-    message: `"${room.title}" was not approved. Reason: ${rejection_reason.trim()}`,
-    reference_id: room.uuid,
-  });
 
   return (await Room.findByPk(roomId)).toJSON();
 };
@@ -205,8 +191,12 @@ const getAnalytics = async () => {
       raw: true,
     }),
     Room.findAll({
-      attributes: ["approval_status", [sequelize.fn("COUNT", sequelize.col("approval_status")), "total"]],
-      group: ["approval_status"],
+      attributes: [
+        "approval_status",
+        "status",
+        [sequelize.fn("COUNT", sequelize.col("uuid")), "total"],
+      ],
+      group: ["approval_status", "status"],
       raw: true,
     }),
     Room.findAll({
@@ -234,11 +224,25 @@ const getAnalytics = async () => {
     total: 0,
   };
   for (const row of roomStatusCounts) {
-    const key = String(row.approval_status).toLowerCase();
-    if (key === "approved") rooms.approved = Number(row.total);
-    else if (key === "rejected") rooms.rejected = Number(row.total);
-    else if (key === "pending") rooms.pending = Number(row.total);
-    rooms.total += Number(row.total);
+    const approval = String(row.approval_status).toUpperCase();
+    const status = String(row.status).toUpperCase();
+    const count = Number(row.total);
+
+    rooms.total += count;
+
+    if (approval === "PENDING") {
+      rooms.pending += count;
+    } else if (approval === "APPROVED") {
+      rooms.approved += count;
+    } else if (approval === "REJECTED") {
+      rooms.rejected += count;
+    }
+
+    if (status === "RENTED") {
+      rooms.rented += count;
+    } else if (status === "INACTIVE") {
+      rooms.inactive += count;
+    }
   }
 
   return { users, rooms, popularDistricts };
