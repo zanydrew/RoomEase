@@ -16,13 +16,19 @@ const requestViewing = async (
     throw { status: 400, message: "This room is not available for viewing." };
   }
   if (room.owner_id === renterId) {
-    throw { status: 400, message: "You cannot request a viewing on your own listing." };
+    throw {
+      status: 400,
+      message: "You cannot request a viewing on your own listing.",
+    };
   }
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   if (new Date(requested_date) < today) {
-    throw { status: 400, message: "Viewing date must be today or in the future." };
+    throw {
+      status: 400,
+      message: "Viewing date must be today or in the future.",
+    };
   }
 
   const viewing = await ViewingRequest.create({
@@ -61,16 +67,41 @@ const getIncomingRequests = async (ownerId, status) => {
   return requests.map((r) => r.toJSON());
 };
 
+// ── GET SINGLE VIEWING REQUEST ────────────────────────────────
+
+/**
+ * Fetch a single viewing request. Only the renter or the owner
+ * involved may view it.
+ */
+const getViewingById = async (viewingId, userId) => {
+  const viewing = await ViewingRequest.findByPk(viewingId);
+  if (!viewing) throw { status: 404, message: "Viewing request not found." };
+
+  const isParticipant =
+    viewing.renter_id === userId || viewing.owner_id === userId;
+  if (!isParticipant) {
+    throw { status: 403, message: "You are not part of this viewing request." };
+  }
+
+  return viewing.toJSON();
+};
+
 // ── ACCEPT ────────────────────────────────────────────────────
 
 const acceptViewing = async (viewingId, ownerId) => {
   const viewing = await ViewingRequest.findByPk(viewingId);
   if (!viewing) throw { status: 404, message: "Viewing request not found." };
   if (viewing.owner_id !== ownerId) {
-    throw { status: 403, message: "You can only manage requests for your own rooms." };
+    throw {
+      status: 403,
+      message: "You can only manage requests for your own rooms.",
+    };
   }
   if (viewing.status !== "PENDING" && viewing.status !== "SUGGESTED") {
-    throw { status: 400, message: "Only pending or suggested requests can be accepted." };
+    throw {
+      status: 400,
+      message: "Only pending or suggested requests can be accepted.",
+    };
   }
 
   await viewing.update({ status: "APPROVED" });
@@ -84,10 +115,16 @@ const rejectViewing = async (viewingId, ownerId, notes) => {
   const viewing = await ViewingRequest.findByPk(viewingId);
   if (!viewing) throw { status: 404, message: "Viewing request not found." };
   if (viewing.owner_id !== ownerId) {
-    throw { status: 403, message: "You can only manage requests for your own rooms." };
+    throw {
+      status: 403,
+      message: "You can only manage requests for your own rooms.",
+    };
   }
   if (viewing.status !== "PENDING" && viewing.status !== "SUGGESTED") {
-    throw { status: 400, message: "Only pending or suggested requests can be rejected." };
+    throw {
+      status: 400,
+      message: "Only pending or suggested requests can be rejected.",
+    };
   }
 
   await viewing.update({ status: "REJECTED", notes: notes || viewing.notes });
@@ -109,16 +146,25 @@ const suggestTime = async (
   const viewing = await ViewingRequest.findByPk(viewingId);
   if (!viewing) throw { status: 404, message: "Viewing request not found." };
   if (viewing.owner_id !== ownerId) {
-    throw { status: 403, message: "You can only manage requests for your own rooms." };
+    throw {
+      status: 403,
+      message: "You can only manage requests for your own rooms.",
+    };
   }
   if (viewing.status !== "PENDING") {
-    throw { status: 400, message: "Only pending requests can be given a new suggested time." };
+    throw {
+      status: 400,
+      message: "Only pending requests can be given a new suggested time.",
+    };
   }
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   if (new Date(suggested_date) < today) {
-    throw { status: 400, message: "Suggested date must be today or in the future." };
+    throw {
+      status: 400,
+      message: "Suggested date must be today or in the future.",
+    };
   }
 
   await viewing.update({
@@ -137,10 +183,16 @@ const cancelViewing = async (viewingId, renterId) => {
   const viewing = await ViewingRequest.findByPk(viewingId);
   if (!viewing) throw { status: 404, message: "Viewing request not found." };
   if (viewing.renter_id !== renterId) {
-    throw { status: 403, message: "You can only cancel your own viewing requests." };
+    throw {
+      status: 403,
+      message: "You can only cancel your own viewing requests.",
+    };
   }
   if (viewing.status === "APPROVED") {
-    throw { status: 400, message: "Cannot cancel an already accepted viewing. Contact the owner." };
+    throw {
+      status: 400,
+      message: "Cannot cancel an already accepted viewing. Contact the owner.",
+    };
   }
 
   await viewing.destroy();
@@ -150,6 +202,7 @@ module.exports = {
   requestViewing,
   getMyRequests,
   getIncomingRequests,
+  getViewingById,
   acceptViewing,
   rejectViewing,
   suggestTime,

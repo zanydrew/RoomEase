@@ -5,56 +5,65 @@ const {
   deleteFromCloudinary,
 } = require("../config/cloudinary");
 
-// ── GET PROFILE ───────────────────────────────────────────────
+// ── GET MY PROFILE ────────────────────────────────────────────
 
 /**
- * Get a user's public profile by their ID.
- * Used when a renter wants to see an owner's profile page.
+ * Get the logged-in user's own profile.
+ * req.user is already attached by verifyToken, so this just re-shapes it.
  */
-const getProfileById = async (id) => {
-  const user = await User.findByPk(id);
-  if (!user) {
-    throw { status: 404, message: "User not found." };
-  }
+const getMyProfile = (user) => ({
+  ...user.toJSON(),
+  name: user.full_name,
+  phone: user.phone_number,
+});
 
-  return {
-    ...user.toJSON(),
-    name: user.full_name,
-    phone: user.phone_number,
-  };
-};
-
-// ── UPDATE PROFILE ────────────────────────────────────────────
+// ── GENERIC PARTIAL UPDATE ────────────────────────────────────
 
 /**
- * Update the logged-in user's own profile.
- * Only updates fields that were actually sent — ignores the rest.
+ * Update one or more allowed fields on the logged-in user's own profile.
+ * Used directly by PATCH /me, and reused by the single-field
+ * PATCH /me/fullName, /me/phoneNumber, /me/location, /me/email routes.
  */
-const updateProfile = async (userId, { name, phone, preferred_lang }) => {
+const updateMe = async (userId, updates = {}) => {
   const currentUser = await User.findByPk(userId);
   if (!currentUser) {
     throw { status: 404, message: "User not found." };
   }
 
-  const updates = {};
-  if (name !== undefined) updates.full_name = name;
-  if (phone !== undefined) updates.phone_number = phone;
-  if (preferred_lang !== undefined) updates.preferred_lang = preferred_lang;
+  const allowed = {};
 
-  if (Object.keys(updates).length === 0) {
-    return {
-      ...currentUser.toJSON(),
-      name: currentUser.full_name,
-      phone: currentUser.phone_number,
-    };
+  if (updates.full_name !== undefined) {
+    if (!updates.full_name.trim()) {
+      throw { status: 400, message: "Full name cannot be empty." };
+    }
+    allowed.full_name = updates.full_name;
   }
 
-  const updated = await currentUser.update(updates);
-  return {
-    ...updated.toJSON(),
-    name: updated.full_name,
-    phone: updated.phone_number,
-  };
+  if (updates.phone_number !== undefined) {
+    allowed.phone_number = updates.phone_number;
+  }
+
+  if (updates.location !== undefined) {
+    allowed.location = updates.location;
+  }
+
+  if (updates.email !== undefined) {
+    if (!updates.email.trim()) {
+      throw { status: 400, message: "Email cannot be empty." };
+    }
+    const existing = await User.findOne({ where: { email: updates.email } });
+    if (existing && existing.uuid !== userId) {
+      throw { status: 409, message: "This email is already in use." };
+    }
+    allowed.email = updates.email;
+  }
+
+  if (Object.keys(allowed).length === 0) {
+    return getMyProfile(currentUser);
+  }
+
+  const updated = await currentUser.update(allowed);
+  return getMyProfile(updated);
 };
 
 // ── UPDATE AVATAR ─────────────────────────────────────────────
@@ -63,7 +72,7 @@ const updateProfile = async (userId, { name, phone, preferred_lang }) => {
  * Upload a new avatar image to Cloudinary and update the user record.
  * Deletes the old avatar from Cloudinary if one exists.
  *
- * @param {number} userId
+ * @param {string} userId
  * @param {Buffer} fileBuffer  - from multer memoryStorage
  */
 const updateAvatar = async (userId, fileBuffer) => {
@@ -85,14 +94,13 @@ const updateAvatar = async (userId, fileBuffer) => {
   const { url } = await uploadToCloudinary(fileBuffer, "roomease/avatars");
   const updated = await currentUser.update({ avatar_url: url });
 
-  return {
-    ...updated.toJSON(),
-    name: updated.full_name,
-    phone: updated.phone_number,
-  };
+  return getMyProfile(updated);
 };
 
 // ── CHANGE PASSWORD ───────────────────────────────────────────
+// Not part of the new API design, but kept as an additional route
+// (PATCH /me/password) since removing it would drop existing,
+// security-relevant functionality that nothing else replaces.
 
 /**
  * Change the logged-in user's password.
@@ -141,9 +149,29 @@ const changePassword = async (userId, { currentPassword, newPassword }) => {
   await user.update({ password_hash: hashed });
 };
 
+// ── DELETE MY ACCOUNT ─────────────────────────────────────────
+
+/**
+ * Permanently delete the logged-in user's own account.
+ * Admin accounts cannot self-delete through this endpoint.
+ */
+const deleteMe = async (userId) => {
+  const user = await User.findByPk(userId);
+  if (!user) {
+    throw { status: 404, message: "User not found." };
+  }
+
+  if (user.role === "ADMIN") {
+    throw { status: 403, message: "Admin accounts cannot be self-deleted." };
+  }
+
+  await user.destroy();
+};
+
 module.exports = {
-  getProfileById,
-  updateProfile,
+  getMyProfile,
+  updateMe,
   updateAvatar,
   changePassword,
+  deleteMe,
 };

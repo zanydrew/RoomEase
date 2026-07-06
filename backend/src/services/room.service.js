@@ -17,49 +17,74 @@ const getAllRooms = async (query) => {
 
   const where = { approval_status: "APPROVED", status: "AVAILABLE" };
 
+  // `available=false` lets a caller explicitly ask for rented rooms too
+  if (query.available !== undefined) {
+    where.status = query.available === "false" ? "RENTED" : "AVAILABLE";
+  }
+
+  if (query.city) {
+    where.city = query.city;
+  }
+
+  // NOTE: `province` has no matching column on the Room model yet
+  // (only city/district exist). Accepted but ignored until the schema
+  // is extended — kept here so the query string shape matches the spec
+  // without throwing on unknown filters.
+  // if (query.province) { where.province = query.province; }
+
   if (query.district) {
     where.district = query.district;
   }
 
-  if (query.room_type) {
-    where.room_type = query.room_type;
+  if (query.roomType) {
+    where.room_type = query.roomType;
   }
 
-  if (query.min_price !== undefined) {
-    where.price_per_month = { [Op.gte]: parseFloat(query.min_price) };
+  if (query.minPrice !== undefined) {
+    where.price_per_month = { [Op.gte]: parseFloat(query.minPrice) };
   }
 
-  if (query.max_price !== undefined) {
+  if (query.maxPrice !== undefined) {
     where.price_per_month = {
       ...(where.price_per_month || {}),
-      [Op.lte]: parseFloat(query.max_price),
+      [Op.lte]: parseFloat(query.maxPrice),
     };
   }
 
-  if (query.search) {
+  // NOTE: `bedrooms` / `bathrooms` also have no matching columns yet.
+  // Accepted but ignored for the same reason as `province` above.
+
+  if (query.keyword) {
     where[Op.or] = [
-      { title: { [Op.like]: `%${query.search}%` } },
-      { address: { [Op.like]: `%${query.search}%` } },
+      { title: { [Op.like]: `%${query.keyword}%` } },
+      { address: { [Op.like]: `%${query.keyword}%` } },
     ];
   }
 
-  const include = {};
-
+  const include = [];
   if (query.university_id) {
-    include = {
+    include.push({
       model: University,
       as: "nearbyUniversities",
       where: { id: parseInt(query.university_id) },
       attributes: [],
-    };
+    });
   }
+
+  const sortOptions = {
+    price_asc: [["price_per_month", "ASC"]],
+    price_desc: [["price_per_month", "DESC"]],
+    newest: [["created_at", "DESC"]],
+    oldest: [["created_at", "ASC"]],
+  };
+  const order = sortOptions[query.sort] || sortOptions.newest;
 
   const rooms = await Room.findAll({
     where,
     include,
     limit,
     offset,
-    order: [["created_at", "DESC"]],
+    order,
   });
 
   return { rooms: rooms.map((room) => room.toJSON()), page, limit };
@@ -85,6 +110,117 @@ const getOwnerRooms = async (ownerId, query) => {
     limit,
     offset,
     order: [["created_at", "DESC"]],
+  });
+
+  return { rooms: rooms.map((room) => room.toJSON()), page, limit };
+};
+
+// ── GET FEATURED ROOMS ────────────────────────────────────────
+
+/**
+ * Curated small set of rooms for the homepage "featured" strip.
+ * Placeholder ranking (most recently approved) until an
+ * `is_featured` column exists on the Room model.
+ */
+const getFeaturedRooms = async (query) => {
+  const limit = Math.min(parseInt(query.limit) || 8, 20);
+
+  const rooms = await Room.findAll({
+    where: { approval_status: "APPROVED", status: "AVAILABLE" },
+    limit,
+    order: [["created_at", "DESC"]],
+  });
+
+  return { rooms: rooms.map((room) => room.toJSON()) };
+};
+
+// ── GET LATEST ROOMS ──────────────────────────────────────────
+
+/**
+ * Paginated, newest-first list of publicly available rooms.
+ */
+const getLatestRooms = async (query) => {
+  const { limit, offset, page } = parsePagination(query);
+
+  const rooms = await Room.findAll({
+    where: { approval_status: "APPROVED", status: "AVAILABLE" },
+    limit,
+    offset,
+    order: [["created_at", "DESC"]],
+  });
+
+  return { rooms: rooms.map((room) => room.toJSON()), page, limit };
+};
+
+// ── GET ROOMS FOR MAP ─────────────────────────────────────────
+
+/**
+ * Lightweight list (uuid, title, price, location) for map pin rendering.
+ * Supports the same district/city filters as the main search.
+ */
+const getRoomsForMap = async (query) => {
+  const where = { approval_status: "APPROVED", status: "AVAILABLE" };
+
+  if (query.city) where.city = query.city;
+  if (query.district) where.district = query.district;
+  if (query.roomType) where.room_type = query.roomType;
+
+  const rooms = await Room.findAll({
+    where,
+    attributes: [
+      "uuid",
+      "title",
+      "price_per_month",
+      "location",
+      "district",
+      "city",
+      "room_type",
+    ],
+  });
+
+  return { rooms: rooms.map((room) => room.toJSON()) };
+};
+
+// ── GET NEARBY ROOMS ──────────────────────────────────────────
+
+/**
+ * Rooms within `radius` km of a given lat/lng, closest first.
+ * Query params: lat, lng (required), radius (optional, default 5km).
+ */
+const getNearbyRooms = async (query) => {
+  const { limit, offset, page } = parsePagination(query);
+
+  const lat = parseFloat(query.lat);
+  const lng = parseFloat(query.lng);
+  if (isNaN(lat) || isNaN(lng)) {
+    throw {
+      status: 400,
+      message: "lat and lng query parameters are required.",
+    };
+  }
+
+  const radiusKm = query.radius ? parseFloat(query.radius) : 5;
+  const radiusMeters = radiusKm * 1000;
+
+  const point = sequelize.fn("ST_GeomFromText", `POINT(${lng} ${lat})`, 4326);
+  const distanceExpr = sequelize.fn(
+    "ST_Distance_Sphere",
+    sequelize.col("location"),
+    point,
+  );
+
+  const rooms = await Room.findAll({
+    where: {
+      approval_status: "APPROVED",
+      status: "AVAILABLE",
+      [Op.and]: [sequelize.where(distanceExpr, { [Op.lte]: radiusMeters })],
+    },
+    attributes: {
+      include: [[distanceExpr, "distance_meters"]],
+    },
+    order: [[sequelize.literal("distance_meters"), "ASC"]],
+    limit,
+    offset,
   });
 
   return { rooms: rooms.map((room) => room.toJSON()), page, limit };
@@ -134,7 +270,10 @@ const getSimilarRooms = async (roomId) => {
         { room_type: room.room_type },
         {
           price_per_month: {
-            [Op.between]: [room.price_per_month * 0.7, room.price_per_month * 1.3],
+            [Op.between]: [
+              room.price_per_month * 0.7,
+              room.price_per_month * 1.3,
+            ],
           },
         },
       ],
@@ -169,7 +308,8 @@ const createRoom = async (ownerId, body) => {
   if (!title || !price_per_month || !address || !room_type || !size_sqm) {
     throw {
       status: 400,
-      message: "Title, price_per_month, address, room_type, and size_sqm are required.",
+      message:
+        "Title, price_per_month, address, room_type, and size_sqm are required.",
     };
   }
 
@@ -231,7 +371,8 @@ const updateRoom = async (roomId, ownerId, body) => {
 
   if (body.title !== undefined) updates.title = body.title;
   if (body.description !== undefined) updates.description = body.description;
-  if (body.price !== undefined) updates.price_per_month = parseFloat(body.price);
+  if (body.price !== undefined)
+    updates.price_per_month = parseFloat(body.price);
   if (body.address !== undefined) updates.address = body.address;
   if (body.district !== undefined) updates.district = body.district;
   if (body.city !== undefined) updates.city = body.city;
@@ -292,6 +433,34 @@ const markAsRented = async (roomId, ownerId) => {
   return (await Room.findByPk(roomId)).toJSON();
 };
 
+// ── UPDATE ROOM STATUS (owner dashboard) ──────────────────────
+
+/**
+ * Generic status toggle used by PATCH /api/owner/rooms/:roomId/status.
+ * Reuses the same rules as markAsRented, generalized to any valid status.
+ */
+const updateRoomStatus = async (roomId, ownerId, status) => {
+  const validStatuses = ["AVAILABLE", "RENTED"];
+  if (!validStatuses.includes(status)) {
+    throw {
+      status: 400,
+      message: `Status must be one of: ${validStatuses.join(", ")}.`,
+    };
+  }
+
+  const room = await Room.findByPk(roomId);
+  if (!room) {
+    throw { status: 404, message: "Room not found." };
+  }
+
+  if (room.owner_id !== ownerId) {
+    throw { status: 403, message: "You can only update your own listings." };
+  }
+
+  await room.update({ status });
+  return (await Room.findByPk(roomId)).toJSON();
+};
+
 // ── UPLOAD IMAGES ─────────────────────────────────────────────
 
 /**
@@ -319,7 +488,9 @@ const uploadImages = async (roomId, ownerId, files) => {
     };
   }
 
-  const existingImages = await RoomImage.findAll({ where: { room_id: room.uuid } });
+  const existingImages = await RoomImage.findAll({
+    where: { room_id: room.uuid },
+  });
   if (existingImages.length + files.length > 10) {
     throw {
       status: 400,
@@ -372,7 +543,9 @@ const deleteImage = async (roomId, imageId, ownerId) => {
   await deleted.destroy();
 
   if (deleted.is_primary) {
-    const remaining = await RoomImage.findAll({ where: { room_id: room.uuid } });
+    const remaining = await RoomImage.findAll({
+      where: { room_id: room.uuid },
+    });
     if (remaining.length > 0) {
       await remaining[0].update({ is_primary: true });
     }
@@ -388,14 +561,24 @@ const setPrimaryImage = async (roomId, imageId, ownerId) => {
     throw { status: 403, message: "You can only update your own listings." };
   }
 
-  await RoomImage.update({ is_primary: false }, { where: { room_id: room.uuid } });
-  await RoomImage.update({ is_primary: true }, { where: { uuid: imageId, room_id: room.uuid } });
+  await RoomImage.update(
+    { is_primary: false },
+    { where: { room_id: room.uuid } },
+  );
+  await RoomImage.update(
+    { is_primary: true },
+    { where: { uuid: imageId, room_id: room.uuid } },
+  );
   const images = await RoomImage.findAll({ where: { room_id: room.uuid } });
   return images.map((image) => image.toJSON());
 };
 
 module.exports = {
   getAllRooms,
+  getFeaturedRooms,
+  getLatestRooms,
+  getRoomsForMap,
+  getNearbyRooms,
   getOwnerRooms,
   getRoomById,
   getSimilarRooms,
@@ -403,6 +586,7 @@ module.exports = {
   updateRoom,
   deleteRoom,
   markAsRented,
+  updateRoomStatus,
   uploadImages,
   deleteImage,
   setPrimaryImage,
