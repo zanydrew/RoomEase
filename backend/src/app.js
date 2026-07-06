@@ -1,8 +1,8 @@
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
-const swaggerJSDoc = require('swagger-jsdoc');
-const swaggerUi = require('swagger-ui-express');
+const swaggerJSDoc = require("swagger-jsdoc");
+const swaggerUi = require("swagger-ui-express");
 dotenv.config();
 
 const app = express();
@@ -22,9 +22,11 @@ app.use("/api/auth", require("./routes/auth.routes"));
 app.use("/api/users", require("./routes/user.routes"));
 app.use("/api/rooms", require("./routes/room.routes"));
 app.use("/api/favorites", require("./routes/favorite.routes"));
-app.use("/api/viewings", require("./routes/viewing.routes"));
+app.use("/api/viewing-requests", require("./routes/viewing.routes"));
 app.use("/api/conversations", require("./routes/conversation.routes"));
+app.use("/api/owner", require("./routes/owner.routes"));
 app.use("/api/admin", require("./routes/admin.routes"));
+app.use("/api/amenities", require("./routes/amenity.routes"));
 
 // ── Health check ──────────────────────────────────────────────
 app.get("/api/health", (req, res) => {
@@ -33,31 +35,31 @@ app.get("/api/health", (req, res) => {
 
 const swaggerOptions = {
   definition: {
-    openapi: '3.0.0',
+    openapi: "3.0.0",
     info: {
-      title: 'RoomEase API Documentation',
-      description: 'RoomEase API documentation',
+      title: "RoomEase API Documentation",
+      description: "RoomEase API documentation",
     },
     servers: [
       {
-        url: 'http://localhost:5000', 
+        url: "http://localhost:5000",
       },
     ],
     components: {
       securitySchemes: {
         bearerAuth: {
-          type: 'http',
-          scheme: 'bearer',
-          bearerFormat: 'JWT',
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "JWT",
         },
       },
     },
   },
-  apis: ['./src/routes/*.js'],
+  apis: ["./src/routes/*.js"],
 };
 const swaggerSpec = swaggerJSDoc(swaggerOptions);
 
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 // ── 404 handler ───────────────────────────────────────────────
 app.use((req, res) => {
   res.status(404).json({ success: false, message: "Route not found" });
