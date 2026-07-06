@@ -2,8 +2,9 @@ const roomService = require("../services/room.service");
 const { success, error } = require("../utils/response");
 
 // ── GET /api/rooms ────────────────────────────────────────────
-// Public — browse all approved rooms with optional filters.
-// Query params: district, room_type, min_price, max_price, search, page, limit
+// Public — browse/search approved + available listings.
+// Query params: page, limit, keyword, city, province, minPrice,
+// maxPrice, roomType, bedrooms, bathrooms, available, sort
 const getAllRooms = async (req, res) => {
   try {
     const result = await roomService.getAllRooms(req.query);
@@ -13,103 +14,83 @@ const getAllRooms = async (req, res) => {
   }
 };
 
-// ── GET /api/rooms/owner ──────────────────────────────────────
-// Owner only — get all their own listings (all statuses).
-const getOwnerRooms = async (req, res) => {
+// ── GET /api/rooms/featured ───────────────────────────────────
+// Public — small curated set for the homepage.
+const getFeaturedRooms = async (req, res) => {
   try {
-    const result = await roomService.getOwnerRooms(req.user.uuid, req.query);
+    const result = await roomService.getFeaturedRooms(req.query);
     return success(res, result, "OK");
   } catch (err) {
     return error(res, err.message, err.status || 500);
   }
 };
 
-// ── GET /api/rooms/:id ────────────────────────────────────────
+// ── GET /api/rooms/latest ─────────────────────────────────────
+// Public — paginated newest-first listing.
+const getLatestRooms = async (req, res) => {
+  try {
+    const result = await roomService.getLatestRooms(req.query);
+    return success(res, result, "OK");
+  } catch (err) {
+    return error(res, err.message, err.status || 500);
+  }
+};
+
+// ── GET /api/rooms/map ─────────────────────────────────────────
+// Public — lightweight list of rooms for map pin rendering.
+const getRoomsForMap = async (req, res) => {
+  try {
+    const result = await roomService.getRoomsForMap(req.query);
+    return success(res, result, "OK");
+  } catch (err) {
+    return error(res, err.message, err.status || 500);
+  }
+};
+
+// ── GET /api/rooms/nearby ─────────────────────────────────────
+// Public — rooms within a radius of ?lat=&lng=&radius=
+const getNearbyRooms = async (req, res) => {
+  try {
+    const result = await roomService.getNearbyRooms(req.query);
+    return success(res, result, "OK");
+  } catch (err) {
+    return error(res, err.message, err.status || 500);
+  }
+};
+
+// ── GET /api/rooms/:roomId ────────────────────────────────────
 // Public — get a single room with all images.
 const getRoomById = async (req, res) => {
   try {
-    const room = await roomService.getRoomById(req.params.id);
+    const room = await roomService.getRoomById(req.params.roomId);
     return success(res, { room }, "OK");
   } catch (err) {
     return error(res, err.message, err.status || 500);
   }
 };
 
-// ── GET /api/rooms/:id/similar ────────────────────────────────
-// Public — get rooms similar to the one being viewed.
+// ── GET /api/rooms/:roomId/similar ────────────────────────────
+// Public — extra endpoint (not in the new spec, kept for the
+// room detail page's "similar listings" section).
 const getSimilarRooms = async (req, res) => {
   try {
-    const rooms = await roomService.getSimilarRooms(req.params.id);
+    const rooms = await roomService.getSimilarRooms(req.params.roomId);
     return success(res, { rooms }, "OK");
   } catch (err) {
     return error(res, err.message, err.status || 500);
   }
 };
 
-// ── POST /api/rooms ───────────────────────────────────────────
-// Owner only — create a new room listing (starts as pending).
-const createRoom = async (req, res) => {
-  try {
-    const room = await roomService.createRoom(req.user.uuid, req.body);
-    return success(
-      res,
-      { room },
-      "Room submitted successfully. It will be visible after admin approval.",
-      201,
-    );
-  } catch (err) {
-    return error(res, err.message, err.status || 500);
-  }
-};
+// ── Room Images ────────────────────────────────────────────────
+// These stay under /api/rooms/:roomId/images per the API design,
+// even though only the owning OWNER can call them (enforced in
+// the route middleware).
 
-// ── PUT /api/rooms/:id ────────────────────────────────────────
-// Owner only — edit their own room.
-const updateRoom = async (req, res) => {
-  try {
-    const room = await roomService.updateRoom(
-      req.params.id,
-      req.user.uuid,
-      req.body,
-    );
-    return success(
-      res,
-      { room },
-      "Room updated. It will be re-reviewed by admin.",
-    );
-  } catch (err) {
-    return error(res, err.message, err.status || 500);
-  }
-};
-
-// ── DELETE /api/rooms/:id ─────────────────────────────────────
-// Owner only — delete their own room + all its images.
-const deleteRoom = async (req, res) => {
-  try {
-    await roomService.deleteRoom(req.params.id, req.user.uuid);
-    return success(res, null, "Room deleted successfully.");
-  } catch (err) {
-    return error(res, err.message, err.status || 500);
-  }
-};
-
-// ── PUT /api/rooms/:id/mark-rented ───────────────────────────
-// Owner only — mark their room as rented.
-const markAsRented = async (req, res) => {
-  try {
-    const room = await roomService.markAsRented(req.params.id, req.user.uuid);
-    return success(res, { room }, "Room marked as rented.");
-  } catch (err) {
-    return error(res, err.message, err.status || 500);
-  }
-};
-
-// ── POST /api/rooms/:id/images ────────────────────────────────
-// Owner only — upload one or more images for their room.
-// req.files is attached by multer (handleUpload + uploadMultiple).
+// ── POST /api/rooms/:roomId/images ────────────────────────────
 const uploadImages = async (req, res) => {
   try {
     const images = await roomService.uploadImages(
-      req.params.id,
+      req.params.roomId,
       req.user.uuid,
       req.files,
     );
@@ -119,12 +100,11 @@ const uploadImages = async (req, res) => {
   }
 };
 
-// ── DELETE /api/rooms/:id/images/:imageId ─────────────────────
-// Owner only — delete a single image from their room.
+// ── DELETE /api/rooms/:roomId/images/:imageId ─────────────────
 const deleteImage = async (req, res) => {
   try {
     await roomService.deleteImage(
-      req.params.id,
+      req.params.roomId,
       req.params.imageId,
       req.user.uuid,
     );
@@ -134,12 +114,19 @@ const deleteImage = async (req, res) => {
   }
 };
 
-// ── PUT /api/rooms/:id/images/:imageId/primary ────────────────
-// Owner only — set a specific image as the primary thumbnail.
-const setPrimaryImage = async (req, res) => {
+// ── PATCH /api/rooms/:roomId/images/:imageId ──────────────────
+// Currently supports { is_primary: true } to set the cover photo.
+const updateImage = async (req, res) => {
   try {
+    if (req.body.is_primary !== true && req.body.is_primary !== "true") {
+      return error(
+        res,
+        "is_primary=true is currently the only supported update.",
+        400,
+      );
+    }
     const images = await roomService.setPrimaryImage(
-      req.params.id,
+      req.params.roomId,
       req.params.imageId,
       req.user.uuid,
     );
@@ -151,14 +138,13 @@ const setPrimaryImage = async (req, res) => {
 
 module.exports = {
   getAllRooms,
-  getOwnerRooms,
+  getFeaturedRooms,
+  getLatestRooms,
+  getRoomsForMap,
+  getNearbyRooms,
   getRoomById,
   getSimilarRooms,
-  createRoom,
-  updateRoom,
-  deleteRoom,
-  markAsRented,
   uploadImages,
   deleteImage,
-  setPrimaryImage,
+  updateImage,
 };
