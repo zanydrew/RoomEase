@@ -1,24 +1,24 @@
 const viewingService = require("../services/viewing.service");
 const { success, error } = require("../utils/response");
 
-// ── POST /api/viewings ────────────────────────────────────────
+// ── POST /api/viewing-requests ────────────────────────────────
 // Renter requests a viewing for a room.
 const requestViewing = async (req, res) => {
   try {
     const { room_id, requested_date, requested_time, renter_note } = req.body;
-      const viewing = await viewingService.requestViewing(req.user.uuid, {
-        room_id,
-        requested_date,
-        requested_time,
-        renter_note,
-      });
+    const viewing = await viewingService.requestViewing(req.user.uuid, {
+      room_id,
+      requested_date,
+      requested_time,
+      renter_note,
+    });
     return success(res, { viewing }, "Viewing request sent successfully.", 201);
   } catch (err) {
     return error(res, err.message, err.status || 500);
   }
 };
 
-// ── GET /api/viewings/my-requests ─────────────────────────────
+// ── GET /api/viewing-requests/my ──────────────────────────────
 // Renter sees all their own viewing requests.
 // Optional query: ?status=pending|accepted|rejected|suggested|cancelled
 const getMyRequests = async (req, res) => {
@@ -33,10 +33,10 @@ const getMyRequests = async (req, res) => {
   }
 };
 
-// ── GET /api/viewings/incoming ────────────────────────────────
+// ── GET /api/viewing-requests/owner ───────────────────────────
 // Owner sees all viewing requests coming in for their rooms.
 // Optional query: ?status=pending|accepted|rejected|suggested|cancelled
-const getIncomingRequests = async (req, res) => {
+const getOwnerRequests = async (req, res) => {
   try {
     const viewings = await viewingService.getIncomingRequests(
       req.user.uuid,
@@ -48,7 +48,21 @@ const getIncomingRequests = async (req, res) => {
   }
 };
 
-// ── PUT /api/viewings/:id/accept ──────────────────────────────
+// ── GET /api/viewing-requests/:id ─────────────────────────────
+// Either participant (renter or owner) can view a single request.
+const getViewingById = async (req, res) => {
+  try {
+    const viewing = await viewingService.getViewingById(
+      req.params.id,
+      req.user.uuid,
+    );
+    return success(res, { viewing }, "OK");
+  } catch (err) {
+    return error(res, err.message, err.status || 500);
+  }
+};
+
+// ── PATCH /api/viewing-requests/:id/accept ────────────────────
 const acceptViewing = async (req, res) => {
   try {
     const viewing = await viewingService.acceptViewing(
@@ -61,7 +75,7 @@ const acceptViewing = async (req, res) => {
   }
 };
 
-// ── PUT /api/viewings/:id/reject ──────────────────────────────
+// ── PATCH /api/viewing-requests/:id/reject ────────────────────
 const rejectViewing = async (req, res) => {
   try {
     const viewing = await viewingService.rejectViewing(
@@ -75,8 +89,9 @@ const rejectViewing = async (req, res) => {
   }
 };
 
-// ── PUT /api/viewings/:id/suggest ─────────────────────────────
-const suggestTime = async (req, res) => {
+// ── PATCH /api/viewing-requests/:id/reschedule ────────────────
+// Owner proposes a new date/time.
+const rescheduleViewing = async (req, res) => {
   try {
     const { suggested_date, suggested_time, owner_note } = req.body;
     const viewing = await viewingService.suggestTime(
@@ -94,7 +109,7 @@ const suggestTime = async (req, res) => {
   }
 };
 
-// ── PUT /api/viewings/:id/cancel ──────────────────────────────
+// ── PATCH /api/viewing-requests/:id/cancel ────────────────────
 const cancelViewing = async (req, res) => {
   try {
     await viewingService.cancelViewing(req.params.id, req.user.uuid);
@@ -107,9 +122,10 @@ const cancelViewing = async (req, res) => {
 module.exports = {
   requestViewing,
   getMyRequests,
-  getIncomingRequests,
+  getOwnerRequests,
+  getViewingById,
   acceptViewing,
   rejectViewing,
-  suggestTime,
+  rescheduleViewing,
   cancelViewing,
 };
