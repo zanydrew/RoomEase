@@ -8,7 +8,11 @@ const register = async (req, res) => {
 
     // Basic presence check — detailed validation is in the service
     if (!full_name || !email || !password || !role) {
-      return error(res, "full_name, email, password, and role are required.", 400);
+      return error(
+        res,
+        "full_name, email, password, and role are required.",
+        400,
+      );
     }
 
     const { user, token } = await authService.register({
@@ -48,6 +52,18 @@ const login = async (req, res) => {
 const getMe = async (req, res) => {
   try {
     return success(res, { user: req.user }, "OK");
+  } catch (err) {
+    return error(res, err.message, 500);
+  }
+};
+
+// ── POST /api/auth/logout ─────────────────────────────────────
+// JWTs are stateless, so there is nothing to invalidate server-side.
+// This endpoint exists for API symmetry / so the client has a clear
+// call to make when logging out (it should also discard its token).
+const logout = async (req, res) => {
+  try {
+    return success(res, null, "Logged out successfully.");
   } catch (err) {
     return error(res, err.message, 500);
   }
