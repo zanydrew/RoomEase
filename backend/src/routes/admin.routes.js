@@ -4,63 +4,44 @@ const adminController = require("../controllers/admin.controller");
 const verifyToken = require("../middlewares/verifyToken");
 const requireRole = require("../middlewares/requireRole");
 
-// Every admin route requires login AND the ADMIN role
+// Every admin route requires login AND the ADMIN role.
 router.use(verifyToken, requireRole("ADMIN"));
 
-// ── Room moderation ───────────────────────────────────────────
+/**
+ * @swagger
+ * /api/admin/dashboard:
+ *   get:
+ *     summary: Admin dashboard (total users, owners, renters)
+ *     tags: [Admin]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: OK }
+ */
+router.get("/dashboard", adminController.getDashboard);
+
+/**
+ * @swagger
+ * /api/admin/analytics:
+ *   get:
+ *     summary: Platform analytics (extra endpoint, kept from the previous API)
+ *     tags: [Admin]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: OK }
+ */
+router.get("/analytics", adminController.getAnalytics);
+
+// ── Room moderation (kept from the previous API) ───────────────
 
 /**
  * @swagger
  * /api/admin/rooms/pending:
  *   get:
  *     summary: Get pending room listings
- *     description: Retrieves a paginated list of room listings awaiting admin moderation/approval.
- *     tags:
- *       - Admin
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *           default: 1
- *         description: Page number for pagination
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           default: 12
- *         description: Number of records to return per page
+ *     tags: [Admin]
+ *     security: [{ bearerAuth: [] }]
  *     responses:
- *       200:
- *         description: Successfully retrieved pending room listings.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: OK
- *                 data:
- *                   type: object
- *                   properties:
- *                     rooms:
- *                       type: array
- *                       items:
- *                         type: object
- *                     pagination:
- *                       type: object
- *       401:
- *         description: Unauthorized. Missing or invalid token.
- *       403:
- *         description: Forbidden. Requires Admin role.
- *       500:
- *         description: Internal Server Error.
+ *       200: { description: OK }
  */
 router.get("/rooms/pending", adminController.getPendingRooms);
 
@@ -68,53 +49,11 @@ router.get("/rooms/pending", adminController.getPendingRooms);
  * @swagger
  * /api/admin/rooms:
  *   get:
- *     summary: Get all room listings
- *     description: Retrieves a paginated list of all room listings across the system regardless of approval or availability states.
- *     tags:
- *       - Admin
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *           default: 1
- *         description: Page number
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           default: 12
- *         description: Records per page
- *       - in: query
- *         name: status
- *         schema:
- *           type: string
- *           enum: [AVAILABLE, RENTED, PENDING, APPROVED, REJECTED]
- *         description: Filter rooms by approval status or availability status
+ *     summary: Get all room listings (any status)
+ *     tags: [Admin]
+ *     security: [{ bearerAuth: [] }]
  *     responses:
- *       200:
- *         description: Comprehensive listing array.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: OK
- *                 data:
- *                   type: object
- *       401:
- *         description: Unauthorized.
- *       403:
- *         description: Forbidden. Requires Admin.
- *       500:
- *         description: Internal Server Error.
+ *       200: { description: OK }
  */
 router.get("/rooms", adminController.getAllRooms);
 
@@ -123,45 +62,16 @@ router.get("/rooms", adminController.getAllRooms);
  * /api/admin/rooms/{id}/approve:
  *   put:
  *     summary: Approve a room listing
- *     description: Vets and approves a room, making it visible to the public search filters.
- *     tags:
- *       - Admin
- *     security:
- *       - bearerAuth: []
+ *     tags: [Admin]
+ *     security: [{ bearerAuth: [] }]
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: The UUID of the room to approve
+ *         schema: { type: string, format: uuid }
  *     responses:
- *       200:
- *         description: Room approved successfully.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: Room approved and is now publicly visible.
- *                 data:
- *                   type: object
- *       400:
- *         description: Invalid room ID format or listing is not pending.
- *       401:
- *         description: Unauthorized.
- *       403:
- *         description: Forbidden.
- *       404:
- *         description: Room not found.
- *       500:
- *         description: Internal Server Error.
+ *       200: { description: Room approved and is now publicly visible. }
+ *       404: { description: Room not found. }
  */
 router.put("/rooms/:id/approve", adminController.approveRoom);
 
@@ -170,291 +80,239 @@ router.put("/rooms/:id/approve", adminController.approveRoom);
  * /api/admin/rooms/{id}/reject:
  *   put:
  *     summary: Reject a room listing
- *     description: Rejects a listing and stores administrative feedback comments/rejection reasons.
- *     tags:
- *       - Admin
- *     security:
- *       - bearerAuth: []
+ *     tags: [Admin]
+ *     security: [{ bearerAuth: [] }]
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: The UUID of the room to reject
+ *         schema: { type: string, format: uuid }
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - rejection_reason
+ *             required: [rejection_reason]
  *             properties:
- *               rejection_reason:
- *                 type: string
- *                 description: Reason for rejecting the listing
- *                 example: Images are unclear and missing address details.
+ *               rejection_reason: { type: string }
  *     responses:
- *       200:
- *         description: Room rejected successfully.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: Room rejected. Owner has been notified.
- *                 data:
- *                   type: object
- *       400:
- *         description: Rejection reason is missing.
- *       401:
- *         description: Unauthorized.
- *       403:
- *         description: Forbidden.
- *       404:
- *         description: Room not found.
- *       500:
- *         description: Internal Server Error.
+ *       200: { description: Room rejected. Owner has been notified. }
+ *       400: { description: A rejection reason is required. }
+ *       404: { description: Room not found. }
  */
 router.put("/rooms/:id/reject", adminController.rejectRoom);
 
-// ── User management ───────────────────────────────────────────
+// ── Users (generic) ─────────────────────────────────────────────
 
 /**
  * @swagger
  * /api/admin/users:
  *   get:
- *     summary: Get all registered users
- *     description: Fetches a systemic log of all registered users (Renters, Landlords, Admins) with pagination and optional filters.
- *     tags:
- *       - Admin
- *     security:
- *       - bearerAuth: []
+ *     summary: Get all users
+ *     tags: [Admin]
+ *     security: [{ bearerAuth: [] }]
  *     parameters:
  *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *           default: 1
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           default: 12
- *       - in: query
  *         name: role
- *         schema:
- *           type: string
- *           enum: [RENTER, OWNER, ADMIN]
- *         description: Filter users by role
+ *         schema: { type: string, enum: [RENTER, OWNER, ADMIN] }
  *       - in: query
  *         name: banned
- *         schema:
- *           type: string
- *           enum: ['true', 'false']
- *         description: Filter users by ban status
+ *         schema: { type: boolean }
  *     responses:
- *       200:
- *         description: Paginated user registry array.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: OK
- *                 data:
- *                   type: object
- *       401:
- *         description: Unauthorized.
- *       403:
- *         description: Forbidden.
- *       500:
- *         description: Internal Server Error.
+ *       200: { description: OK }
  */
 router.get("/users", adminController.getAllUsers);
 
 /**
  * @swagger
- * /api/admin/users/{id}/ban:
- *   put:
- *     summary: Suspend a user account
- *     description: Suspends a user account to block platform authentication entirely.
- *     tags:
- *       - Admin
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: The UUID of the user to ban
- *     responses:
- *       200:
- *         description: Account successfully banned.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: User banned successfully.
- *                 data:
- *                   type: object
- *       401:
- *         description: Unauthorized.
- *       403:
- *         description: Forbidden.
- *       404:
- *         description: User not found.
- *       500:
- *         description: Internal Server Error.
- */
-router.put("/users/:id/ban", adminController.banUser);
-
-/**
- * @swagger
- * /api/admin/users/{id}/unban:
- *   put:
- *     summary: Restore a banned user account
- *     description: Restores system access permissions for an officially banned account.
- *     tags:
- *       - Admin
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: The UUID of the user to unban
- *     responses:
- *       200:
- *         description: Account successfully unbanned.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: User unbanned successfully.
- *                 data:
- *                   type: object
- *       401:
- *         description: Unauthorized.
- *       403:
- *         description: Forbidden.
- *       404:
- *         description: User not found.
- *       500:
- *         description: Internal Server Error.
- */
-router.put("/users/:id/unban", adminController.unbanUser);
-
-/**
- * @swagger
- * /api/admin/users/{id}/verify:
- *   put:
- *     summary: Verify a landlord/owner
- *     description: Upgrades a landlord profile status to a verified, trustworthy level.
- *     tags:
- *       - Admin
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: The UUID of the user to verify
- *     responses:
- *       200:
- *         description: Landlord successfully verified.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: Owner verified successfully.
- *                 data:
- *                   type: object
- *       401:
- *         description: Unauthorized.
- *       403:
- *         description: Forbidden.
- *       404:
- *         description: User not found.
- *       500:
- *         description: Internal Server Error.
- */
-router.put("/users/:id/verify", adminController.verifyOwner);
-
-// ── Analytics ─────────────────────────────────────────────────
-
-/**
- * @swagger
- * /api/admin/analytics:
+ * /api/admin/users/{id}:
  *   get:
- *     summary: Get systemic analytical metrics
- *     description: Aggregates structural system metrics (total rooms, active users, open tour bookings, and general fill rates) for admin reporting.
- *     tags:
- *       - Admin
- *     security:
- *       - bearerAuth: []
+ *     summary: Get a single user by id
+ *     tags: [Admin]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
  *     responses:
- *       200:
- *         description: Object counting total rooms, active users, open tour bookings, and general fill rates.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: OK
- *                 data:
- *                   type: object
- *       401:
- *         description: Unauthorized.
- *       403:
- *         description: Forbidden.
- *       500:
- *         description: Internal Server Error.
+ *       200: { description: OK }
+ *       404: { description: User not found. }
  */
-router.get("/analytics", adminController.getAnalytics);
+router.get("/users/:id", adminController.getUserById);
+
+/**
+ * @swagger
+ * /api/admin/users/{id}:
+ *   patch:
+ *     summary: Update a user (supports is_banned, is_verified, full_name, phone_number, location)
+ *     tags: [Admin]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200: { description: User updated successfully. }
+ *       404: { description: User not found. }
+ */
+router.patch("/users/:id", adminController.updateUser);
+
+/**
+ * @swagger
+ * /api/admin/users/{id}:
+ *   delete:
+ *     summary: Delete a user
+ *     tags: [Admin]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200: { description: User deleted successfully. }
+ *       403: { description: Admin accounts cannot be deleted. }
+ *       404: { description: User not found. }
+ */
+router.delete("/users/:id", adminController.deleteUser);
+
+// ── Renters ──────────────────────────────────────────────────────
+
+/**
+ * @swagger
+ * /api/admin/renters:
+ *   get:
+ *     summary: Get all renters
+ *     tags: [Admin]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: OK }
+ */
+router.get("/renters", adminController.getAllRenters);
+
+/**
+ * @swagger
+ * /api/admin/renters/{id}:
+ *   get:
+ *     summary: Get a single renter
+ *     tags: [Admin]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200: { description: OK }
+ *       404: { description: Renter not found. }
+ */
+router.get("/renters/:id", adminController.getRenterById);
+
+/**
+ * @swagger
+ * /api/admin/renters/{id}:
+ *   patch:
+ *     summary: Update a renter
+ *     tags: [Admin]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200: { description: Renter updated successfully. }
+ *       404: { description: Renter not found. }
+ */
+router.patch("/renters/:id", adminController.updateRenter);
+
+/**
+ * @swagger
+ * /api/admin/renters/{id}:
+ *   delete:
+ *     summary: Delete a renter
+ *     tags: [Admin]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200: { description: Renter deleted successfully. }
+ *       404: { description: Renter not found. }
+ */
+router.delete("/renters/:id", adminController.deleteRenter);
+
+// ── Owners ───────────────────────────────────────────────────────
+
+/**
+ * @swagger
+ * /api/admin/owners:
+ *   get:
+ *     summary: Get all owners
+ *     tags: [Admin]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: OK }
+ */
+router.get("/owners", adminController.getAllOwners);
+
+/**
+ * @swagger
+ * /api/admin/owners/{id}:
+ *   get:
+ *     summary: Get a single owner
+ *     tags: [Admin]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200: { description: OK }
+ *       404: { description: Owner not found. }
+ */
+router.get("/owners/:id", adminController.getOwnerById);
+
+/**
+ * @swagger
+ * /api/admin/owners/{id}:
+ *   patch:
+ *     summary: "Update an owner (e.g. is_verified=true to verify)"
+ *     tags: [Admin]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200: { description: Owner updated successfully. }
+ *       404: { description: Owner not found. }
+ */
+router.patch("/owners/:id", adminController.updateOwner);
+
+/**
+ * @swagger
+ * /api/admin/owners/{id}:
+ *   delete:
+ *     summary: Delete an owner
+ *     tags: [Admin]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200: { description: Owner deleted successfully. }
+ *       404: { description: Owner not found. }
+ */
+router.delete("/owners/:id", adminController.deleteOwner);
 
 module.exports = router;

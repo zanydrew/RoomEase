@@ -3,8 +3,6 @@ const router = express.Router();
 const authController = require("../controllers/auth.controller");
 const verifyToken = require("../middlewares/verifyToken");
 
-module.exports = router;
-
 /**
  * @swagger
  * /api/auth/register:
@@ -195,3 +193,23 @@ router.post("/login", authController.login);
  *         description: Internal Server Error.
  */
 router.get("/me", verifyToken, authController.getMe);
+
+/**
+ * @swagger
+ * /api/auth/logout:
+ *   post:
+ *     summary: Log out the current session
+ *     description: Stateless for JWT — confirms logout so the client can discard its token.
+ *     tags:
+ *       - Auth
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Logged out successfully.
+ *       401:
+ *         description: Unauthorized.
+ */
+router.post("/logout", verifyToken, authController.logout);
+
+module.exports = router;

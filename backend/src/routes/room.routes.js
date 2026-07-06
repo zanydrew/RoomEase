@@ -6,549 +6,182 @@ const requireRole = require("../middlewares/requireRole");
 const { uploadMultiple, handleUpload } = require("../middlewares/upload");
 
 // ── Public routes (no login needed) ──────────────────────────
+// Owner-only listing management (create/edit/delete/status) now
+// lives in owner.routes.js under /api/owner/rooms.
 
 /**
  * @swagger
  * /api/rooms:
  *   get:
  *     summary: Browse and search room listings
- *     description: Browses, searches, and filters public approved listings. Supports spatial proximity computations and text search.
- *     tags:
- *       - Rooms
+ *     tags: [Rooms]
  *     parameters:
  *       - in: query
- *         name: district
- *         schema:
- *           type: string
- *         description: Filter by district name
- *       - in: query
- *         name: room_type
- *         schema:
- *           type: string
- *           enum: [STUDIO, 1BR, 2BR, SHARED]
- *         description: Filter by layout category
- *       - in: query
- *         name: min_price
- *         schema:
- *           type: number
- *         description: Minimum monthly rent price
- *       - in: query
- *         name: max_price
- *         schema:
- *           type: number
- *         description: Maximum monthly rent price
- *       - in: query
- *         name: university_id
- *         schema:
- *           type: integer
- *         description: Filter by proximity to a specific university ID
- *       - in: query
- *         name: search
- *         schema:
- *           type: string
- *         description: Keyword search on title/description
- *       - in: query
  *         name: page
- *         schema:
- *           type: integer
- *           default: 1
+ *         schema: { type: integer, default: 1 }
  *       - in: query
  *         name: limit
- *         schema:
- *           type: integer
- *           default: 12
+ *         schema: { type: integer, default: 12 }
+ *       - in: query
+ *         name: keyword
+ *         schema: { type: string }
+ *       - in: query
+ *         name: city
+ *         schema: { type: string }
+ *       - in: query
+ *         name: province
+ *         schema: { type: string }
+ *       - in: query
+ *         name: minPrice
+ *         schema: { type: number }
+ *       - in: query
+ *         name: maxPrice
+ *         schema: { type: number }
+ *       - in: query
+ *         name: roomType
+ *         schema: { type: string, enum: [STUDIO, 1BR, 2BR, SHARED] }
+ *       - in: query
+ *         name: bedrooms
+ *         schema: { type: integer }
+ *       - in: query
+ *         name: bathrooms
+ *         schema: { type: integer }
+ *       - in: query
+ *         name: available
+ *         schema: { type: boolean }
+ *       - in: query
+ *         name: sort
+ *         schema: { type: string, enum: [price_asc, price_desc, newest, oldest] }
  *     responses:
- *       200:
- *         description: Array of filtered properties matching criteria.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: OK
- *                 data:
- *                   type: object
- *       500:
- *         description: Internal Server Error.
+ *       200: { description: OK }
  */
 router.get("/", roomController.getAllRooms);
 
 /**
  * @swagger
- * /api/rooms/{id}:
+ * /api/rooms/featured:
+ *   get:
+ *     summary: Get featured rooms
+ *     tags: [Rooms]
+ *     responses:
+ *       200: { description: OK }
+ */
+router.get("/featured", roomController.getFeaturedRooms);
+
+/**
+ * @swagger
+ * /api/rooms/latest:
+ *   get:
+ *     summary: Get the newest room listings
+ *     tags: [Rooms]
+ *     responses:
+ *       200: { description: OK }
+ */
+router.get("/latest", roomController.getLatestRooms);
+
+/**
+ * @swagger
+ * /api/rooms/map:
+ *   get:
+ *     summary: Get rooms for map pin rendering
+ *     tags: [Rooms]
+ *     responses:
+ *       200: { description: OK }
+ */
+router.get("/map", roomController.getRoomsForMap);
+
+/**
+ * @swagger
+ * /api/rooms/nearby:
+ *   get:
+ *     summary: Get rooms near a lat/lng point
+ *     tags: [Rooms]
+ *     parameters:
+ *       - in: query
+ *         name: lat
+ *         required: true
+ *         schema: { type: number }
+ *       - in: query
+ *         name: lng
+ *         required: true
+ *         schema: { type: number }
+ *       - in: query
+ *         name: radius
+ *         schema: { type: number, default: 5 }
+ *         description: Radius in kilometers
+ *     responses:
+ *       200: { description: OK }
+ *       400: { description: lat and lng are required. }
+ */
+router.get("/nearby", roomController.getNearbyRooms);
+
+/**
+ * @swagger
+ * /api/rooms/{roomId}:
  *   get:
  *     summary: Get single room details
- *     description: Retrieves granular detail configurations for a single room, binding nested images and amenities lists.
- *     tags:
- *       - Rooms
+ *     tags: [Rooms]
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: roomId
  *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: The UUID of the room to retrieve
+ *         schema: { type: string, format: uuid }
  *     responses:
- *       200:
- *         description: Complete room object schema details.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: OK
- *                 data:
- *                   type: object
- *       400:
- *         description: Invalid room ID format.
- *       404:
- *         description: Room listing not found.
- *       500:
- *         description: Internal Server Error.
+ *       200: { description: OK }
+ *       404: { description: Room listing not found. }
  */
-router.get("/:id", roomController.getRoomById);
+router.get("/:roomId", roomController.getRoomById);
 
 /**
  * @swagger
- * /api/rooms/{id}/similar:
+ * /api/rooms/{roomId}/similar:
  *   get:
- *     summary: Get similar rooms
- *     description: Recommends structurally similar rental listings located within adjacent districts or shared price points.
- *     tags:
- *       - Rooms
+ *     summary: Get similar rooms (extra endpoint, kept from the previous API)
+ *     tags: [Rooms]
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: roomId
  *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: Room UUID to match similarities
+ *         schema: { type: string, format: uuid }
  *     responses:
- *       200:
- *         description: Array of matching alternative room vectors.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: OK
- *                 data:
- *                   type: object
- *       400:
- *         description: Invalid room ID format.
- *       404:
- *         description: Room not found.
- *       500:
- *         description: Internal Server Error.
+ *       200: { description: OK }
+ *       404: { description: Room not found. }
  */
-router.get("/:id/similar", roomController.getSimilarRooms);
+router.get("/:roomId/similar", roomController.getSimilarRooms);
 
-// ── Owner only routes ─────────────────────────────────────────
+// ── Room Images ───────────────────────────────────────────────
+// Owner-only, but the path stays under /api/rooms per the API design.
 
 /**
  * @swagger
- * /api/rooms/owner/listings:
- *   get:
- *     summary: Get owned room listings (Landlord dashboard)
- *     description: Fetches all properties belonging to the requesting landlord to populate isolated management views (Approved, Pending, and Rejected).
- *     tags:
- *       - Rooms
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *           default: 1
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           default: 12
- *     responses:
- *       200:
- *         description: Array of owned listings.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: OK
- *                 data:
- *                   type: object
- *       401:
- *         description: Unauthorized.
- *       403:
- *         description: Forbidden. Requires OWNER role.
- *       500:
- *         description: Internal Server Error.
- */
-router.get(
-  "/owner/listings",
-  verifyToken,
-  requireRole("OWNER"),
-  roomController.getOwnerRooms,
-);
-
-/**
- * @swagger
- * /api/rooms:
- *   post:
- *     summary: Submit a new room listing
- *     description: Submits a new property asset to the catalog. Automatically falls back into a PENDING approval status.
- *     tags:
- *       - Rooms
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - title
- *               - price_per_month
- *               - address
- *               - room_type
- *               - size_sqm
- *             properties:
- *               title:
- *                 type: string
- *                 example: Cozy studio near CADT campus
- *               description:
- *                 type: string
- *                 example: Fully furnished studio room with WiFi and aircon.
- *               price_per_month:
- *                 type: number
- *                 example: 250.00
- *               deposit:
- *                 type: number
- *                 example: 250.00
- *               address:
- *                 type: string
- *                 example: Prek Leap, Chroy Changvar
- *               district:
- *                 type: string
- *                 example: Chroy Changvar
- *               city:
- *                 type: string
- *                 example: Phnom Penh
- *               latitude:
- *                 type: number
- *                 example: 11.6429
- *               longitude:
- *                 type: number
- *                 example: 104.9123
- *               room_type:
- *                 type: string
- *                 enum: [STUDIO, 1BR, 2BR, SHARED]
- *                 example: STUDIO
- *               size_sqm:
- *                 type: number
- *                 example: 25
- *               amenities:
- *                 type: array
- *                 items:
- *                   type: integer
- *                 description: Array of amenity database IDs
- *                 example: [1, 2, 3]
- *     responses:
- *       201:
- *         description: Newly created room entity.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: Room submitted successfully. It will be visible after admin approval.
- *                 data:
- *                   type: object
- *       400:
- *         description: Validation failure or missing fields.
- *       401:
- *         description: Unauthorized.
- *       403:
- *         description: Forbidden.
- *       500:
- *         description: Internal Server Error.
- */
-router.post("/", verifyToken, requireRole("OWNER"), roomController.createRoom);
-
-/**
- * @swagger
- * /api/rooms/{id}:
- *   put:
- *     summary: Update an owned room listing
- *     description: Modifies existing details, pricing levels, coordinates, or amenities of an owned listing. Marks status back to PENDING.
- *     tags:
- *       - Rooms
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: Room UUID to update
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               title:
- *                 type: string
- *               description:
- *                 type: string
- *               price_per_month:
- *                 type: number
- *               deposit:
- *                 type: number
- *               address:
- *                 type: string
- *               district:
- *                 type: string
- *               city:
- *                 type: string
- *               latitude:
- *                 type: number
- *               longitude:
- *                 type: number
- *               room_type:
- *                 type: string
- *                 enum: [STUDIO, 1BR, 2BR, SHARED]
- *               amenities:
- *                 type: array
- *                 items:
- *                   type: integer
- *     responses:
- *       200:
- *         description: Updated room resource instance.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: Room updated. It will be re-reviewed by admin.
- *                 data:
- *                   type: object
- *       400:
- *         description: Validation error.
- *       401:
- *         description: Unauthorized.
- *       403:
- *         description: Forbidden. Not the owner of this room or incorrect role.
- *       404:
- *         description: Room not found.
- *       500:
- *         description: Internal Server Error.
- */
-router.put(
-  "/:id",
-  verifyToken,
-  requireRole("OWNER"),
-  roomController.updateRoom,
-);
-
-/**
- * @swagger
- * /api/rooms/{id}:
- *   delete:
- *     summary: Delete a room listing
- *     description: Permanently clears a property entry and completely wipes associated image links hosted inside Cloudinary storage.
- *     tags:
- *       - Rooms
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: Room UUID to delete
- *     responses:
- *       200:
- *         description: Confirmation block establishing clean removal status.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: Room deleted successfully.
- *       401:
- *         description: Unauthorized.
- *       403:
- *         description: Forbidden. Not the owner of the listing.
- *       404:
- *         description: Room not found.
- *       500:
- *         description: Internal Server Error.
- */
-router.delete(
-  "/:id",
-  verifyToken,
-  requireRole("OWNER"),
-  roomController.deleteRoom,
-);
-
-/**
- * @swagger
- * /api/rooms/{id}/mark-rented:
- *   put:
- *     summary: Mark a listing as rented
- *     description: Toggles the operational availability flag to RENTED to hide the asset from public search visibility.
- *     tags:
- *       - Rooms
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: Room UUID to mark rented
- *     responses:
- *       200:
- *         description: Modified instance mapping.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: Room marked as rented.
- *                 data:
- *                   type: object
- *       401:
- *         description: Unauthorized.
- *       403:
- *         description: Forbidden.
- *       404:
- *         description: Room not found.
- *       500:
- *         description: Internal Server Error.
- */
-router.put(
-  "/:id/mark-rented",
-  verifyToken,
-  requireRole("OWNER"),
-  roomController.markAsRented,
-);
-
-// Image management
-
-/**
- * @swagger
- * /api/rooms/{id}/images:
+ * /api/rooms/{roomId}/images:
  *   post:
  *     summary: Upload property photos
- *     description: Uploads multiple property photos to Cloudinary using multipart handling via Multer middleware.
- *     tags:
- *       - Rooms
- *     security:
- *       - bearerAuth: []
+ *     tags: [Rooms]
+ *     security: [{ bearerAuth: [] }]
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: roomId
  *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: Room UUID to upload photos to
+ *         schema: { type: string, format: uuid }
  *     requestBody:
  *       required: true
  *       content:
  *         multipart/form-data:
  *           schema:
  *             type: object
- *             required:
- *               - images
  *             properties:
  *               images:
  *                 type: array
- *                 items:
- *                   type: string
- *                   format: binary
- *                 description: Image files to upload
+ *                 items: { type: string, format: binary }
  *     responses:
- *       201:
- *         description: Array of newly stored image metadata links.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: Images uploaded successfully.
- *                 data:
- *                   type: object
- *       400:
- *         description: No files uploaded.
- *       401:
- *         description: Unauthorized.
- *       403:
- *         description: Forbidden.
- *       404:
- *         description: Room not found.
- *       500:
- *         description: Internal Server Error.
+ *       201: { description: Images uploaded successfully. }
+ *       400: { description: No files uploaded. }
+ *       403: { description: Forbidden. }
+ *       404: { description: Room not found. }
  */
 router.post(
-  "/:id/images",
+  "/:roomId/images",
   verifyToken,
   requireRole("OWNER"),
   handleUpload(uploadMultiple),
@@ -557,54 +190,27 @@ router.post(
 
 /**
  * @swagger
- * /api/rooms/{id}/images/{imageId}:
+ * /api/rooms/{roomId}/images/{imageId}:
  *   delete:
  *     summary: Delete a room image
- *     description: Removes a specific image from database records and Cloudinary storage.
- *     tags:
- *       - Rooms
- *     security:
- *       - bearerAuth: []
+ *     tags: [Rooms]
+ *     security: [{ bearerAuth: [] }]
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: roomId
  *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: The Room UUID
+ *         schema: { type: string, format: uuid }
  *       - in: path
  *         name: imageId
  *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: The Image UUID to delete
+ *         schema: { type: string, format: uuid }
  *     responses:
- *       200:
- *         description: Confirmation block establishing clean removal status.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: Image deleted successfully.
- *       401:
- *         description: Unauthorized.
- *       403:
- *         description: Forbidden.
- *       404:
- *         description: Room or image not found.
- *       500:
- *         description: Internal Server Error.
+ *       200: { description: Image deleted successfully. }
+ *       403: { description: Forbidden. }
+ *       404: { description: Room or image not found. }
  */
 router.delete(
-  "/:id/images/:imageId",
+  "/:roomId/images/:imageId",
   verifyToken,
   requireRole("OWNER"),
   roomController.deleteImage,
@@ -612,59 +218,37 @@ router.delete(
 
 /**
  * @swagger
- * /api/rooms/{id}/images/{imageId}/primary:
- *   put:
- *     summary: Set primary cover photo
- *     description: Sets a specific image as the primary cover photo for the listing.
- *     tags:
- *       - Rooms
- *     security:
- *       - bearerAuth: []
+ * /api/rooms/{roomId}/images/{imageId}:
+ *   patch:
+ *     summary: Update a room image (currently only supports setting it as primary)
+ *     tags: [Rooms]
+ *     security: [{ bearerAuth: [] }]
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: roomId
  *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: The Room UUID
+ *         schema: { type: string, format: uuid }
  *       - in: path
  *         name: imageId
  *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: The Image UUID to set as primary
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               is_primary: { type: boolean, example: true }
  *     responses:
- *       200:
- *         description: Primary image updated. Returns listing images array.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: Primary image updated.
- *                 data:
- *                   type: object
- *       401:
- *         description: Unauthorized.
- *       403:
- *         description: Forbidden.
- *       404:
- *         description: Room or image not found.
- *       500:
- *         description: Internal Server Error.
+ *       200: { description: Primary image updated. }
+ *       403: { description: Forbidden. }
+ *       404: { description: Room or image not found. }
  */
-router.put(
-  "/:id/images/:imageId/primary",
+router.patch(
+  "/:roomId/images/:imageId",
   verifyToken,
   requireRole("OWNER"),
-  roomController.setPrimaryImage,
+  roomController.updateImage,
 );
 
 module.exports = router;

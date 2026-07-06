@@ -4,238 +4,143 @@ const userController = require("../controllers/user.controller");
 const verifyToken = require("../middlewares/verifyToken");
 const { uploadSingle, handleUpload } = require("../middlewares/upload");
 
-// All user routes require login
+// Every route in this file requires a logged-in user.
 router.use(verifyToken);
 
-// Profile
-
 /**
  * @swagger
- * /api/users/profile:
+ * /api/users/me:
  *   get:
- *     summary: Retrieve own profile
- *     description: Returns the currently logged-in user's detailed profile settings.
- *     tags:
- *       - Users
- *     security:
- *       - bearerAuth: []
+ *     summary: Get my profile
+ *     tags: [Users]
+ *     security: [{ bearerAuth: [] }]
  *     responses:
- *       200:
- *         description: Detailed user settings profile.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: OK
- *                 data:
- *                   type: object
- *       401:
- *         description: Unauthorized.
- *       500:
- *         description: Internal Server Error.
+ *       200: { description: OK }
+ *       401: { description: Unauthorized }
  */
-router.get("/profile", userController.getMyProfile);
+router.get("/me", userController.getMe);
 
 /**
  * @swagger
- * /api/users/{id}:
- *   get:
- *     summary: Retrieve profile by ID
- *     description: Returns any user's  profile (useful to view landlord profile details and reviews).
- *     tags:
- *       - Users
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: The UUID of the user profile to fetch
+ * /api/users/me:
+ *   patch:
+ *     summary: Update my profile (partial update)
+ *     tags: [Users]
+ *     security: [{ bearerAuth: [] }]
  *     responses:
- *       200:
- *         description: Public landlord profile details and reviews.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: OK
- *                 data:
- *                   type: object
- *       401:
- *         description: Unauthorized.
- *       404:
- *         description: User profile not found.
- *       500:
- *         description: Internal Server Error.
+ *       200: { description: Profile updated successfully. }
+ *       401: { description: Unauthorized }
  */
-router.get("/:id", userController.getProfileById);
+router.patch("/me", userController.updateMe);
 
 /**
  * @swagger
- * /api/users/profile:
- *   put:
- *     summary: Update profile details
- *     description: Updates the logged-in user's name, phone, and preferred language setting.
- *     tags:
- *       - Users
- *     security:
- *       - bearerAuth: []
+ * /api/users/me/avatar:
+ *   patch:
+ *     summary: Update my avatar
+ *     tags: [Users]
+ *     security: [{ bearerAuth: [] }]
  *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               name:
- *                 type: string
- *                 example: Johnathan Doe
- *               phone:
- *                 type: string
- *                 example: "+85512345678"
- *               preferred_lang:
- *                 type: string
- *                 enum: [en, kh]
- *                 example: en
- *     responses:
- *       200:
- *         description: Profile updated successfully. Returns updated user profile.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: Profile updated successfully.
- *                 data:
- *                   type: object
- *       400:
- *         description: Validation error.
- *       401:
- *         description: Unauthorized.
- *       500:
- *         description: Internal Server Error.
- */
-router.put("/profile", userController.updateProfile);
-
-/**
- * @swagger
- * /api/users/avatar:
- *   put:
- *     summary: Upload and update avatar
- *     description: Uploads and updates a user's avatar image to Cloudinary.
- *     tags:
- *       - Users
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
  *       content:
  *         multipart/form-data:
  *           schema:
  *             type: object
- *             required:
- *               - avatar
  *             properties:
- *               avatar:
- *                 type: string
- *                 format: binary
- *                 description: Avatar image file to upload
+ *               image: { type: string, format: binary }
  *     responses:
- *       200:
- *         description: Avatar updated successfully. Returns updated user profile.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: Avatar updated successfully.
- *                 data:
- *                   type: object
- *       400:
- *         description: No image file provided.
- *       401:
- *         description: Unauthorized.
- *       500:
- *         description: Internal Server Error.
+ *       200: { description: Avatar updated successfully. }
+ *       400: { description: No image file provided. }
+ *       401: { description: Unauthorized }
  */
-router.put("/avatar", handleUpload(uploadSingle), userController.updateAvatar);
-
-// Password
+router.patch(
+  "/me/avatar",
+  handleUpload(uploadSingle),
+  userController.updateAvatar,
+);
 
 /**
  * @swagger
- * /api/users/password:
- *   put:
- *     summary: Change password
- *     description: Validates current password and updates to a new password.
- *     tags:
- *       - Users
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - currentPassword
- *               - newPassword
- *             properties:
- *               currentPassword:
- *                 type: string
- *                 format: password
- *                 example: OldPassword123!
- *               newPassword:
- *                 type: string
- *                 format: password
- *                 example: NewPassword123!
+ * /api/users/me/phoneNumber:
+ *   patch:
+ *     summary: Update my phone number
+ *     tags: [Users]
+ *     security: [{ bearerAuth: [] }]
  *     responses:
- *       200:
- *         description: Password changed successfully.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: Password changed successfully.
- *       400:
- *         description: Missing required fields or incorrect current password.
- *       401:
- *         description: Unauthorized.
- *       500:
- *         description: Internal Server Error.
+ *       200: { description: Phone number updated successfully. }
+ *       400: { description: phone_number is required. }
+ *       401: { description: Unauthorized }
  */
-router.put("/password", userController.changePassword);
+router.patch("/me/phoneNumber", userController.updatePhoneNumber);
+
+/**
+ * @swagger
+ * /api/users/me/location:
+ *   patch:
+ *     summary: Update my location
+ *     tags: [Users]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: Location updated successfully. }
+ *       400: { description: location is required. }
+ *       401: { description: Unauthorized }
+ */
+router.patch("/me/location", userController.updateLocation);
+
+/**
+ * @swagger
+ * /api/users/me/fullName:
+ *   patch:
+ *     summary: Update my full name
+ *     tags: [Users]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: Full name updated successfully. }
+ *       400: { description: full_name is required. }
+ *       401: { description: Unauthorized }
+ */
+router.patch("/me/fullName", userController.updateFullName);
+
+/**
+ * @swagger
+ * /api/users/me/email:
+ *   patch:
+ *     summary: Update my email
+ *     tags: [Users]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: Email updated successfully. }
+ *       400: { description: email is required. }
+ *       409: { description: Email already in use. }
+ *       401: { description: Unauthorized }
+ */
+router.patch("/me/email", userController.updateEmail);
+
+/**
+ * @swagger
+ * /api/users/me/password:
+ *   patch:
+ *     summary: Change my password (extra endpoint, kept from the previous API)
+ *     tags: [Users]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: Password changed successfully. }
+ *       400: { description: Validation error. }
+ *       401: { description: Current password is incorrect. }
+ */
+router.patch("/me/password", userController.changePassword);
+
+/**
+ * @swagger
+ * /api/users/me:
+ *   delete:
+ *     summary: Delete my account
+ *     tags: [Users]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: Account deleted successfully. }
+ *       401: { description: Unauthorized }
+ *       403: { description: Admin accounts cannot be self-deleted. }
+ */
+router.delete("/me", userController.deleteMe);
 
 module.exports = router;
