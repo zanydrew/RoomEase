@@ -16,7 +16,9 @@ sequelize
   .then(() => {
     console.log("✅ MySQL connected successfully");
     app.listen(PORT, () => {
-      console.log(`🚀 RoomEase server running on http://localhost:${PORT}`);
+      console.log(
+        `🚀 ${process.env.DB_NAME} server running on http://localhost:${PORT}`,
+      );
       console.log(`   Environment: ${process.env.NODE_ENV || "development"}`);
     });
   })
