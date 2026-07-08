@@ -45,6 +45,23 @@ const login = async (req, res) => {
   }
 };
 
+// ── POST /api/auth/google ─────────────────────────────────────
+const googleLogin = async (req, res) => {
+  try {
+    const { idToken } = req.body;
+
+    if (!idToken) {
+      return error(res, "idToken is required.", 400);
+    }
+
+    const { user, token } = await authService.loginWithGoogle({ idToken });
+
+    return success(res, { user, token }, "Logged in successfully.");
+  } catch (err) {
+    return error(res, err.message, err.status || 500);
+  }
+};
+
 // ── GET /api/auth/me ──────────────────────────────────────────
 // verifyToken middleware already validated the token and
 // attached the user to req.user — nothing left to do here
@@ -69,4 +86,4 @@ const logout = async (req, res) => {
   }
 };
 
-module.exports = { register, login, logout, getMe };
+module.exports = { register, login, googleLogin, logout, getMe };
