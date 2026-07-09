@@ -117,7 +117,7 @@ const login = async ({ email, password }) => {
  *   avatar_url if missing) instead of creating a duplicate user.
  * - Else → auto-create a new account. password_hash stays NULL because
  *   the account has no local password; it can only be accessed via
- *   Google (or later via "forgot password" if the project adds one).
+ *   Google (or later via "forgot password" when the project adds one in the future).
  * - Banned users are rejected, exactly like normal login.
  *
  * NOTE: Google Sign-In has no concept of "role" (RENTER vs OWNER) — the
