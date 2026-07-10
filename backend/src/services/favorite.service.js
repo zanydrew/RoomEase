@@ -1,13 +1,21 @@
-const { SavedRoom, Room } = require("../models");
+const { SavedRoom, Room, RoomImage } = require("../models");
 
 // ── GET MY SAVED ROOMS ────────────────────────────────────────
 
 const getMyFavorites = async (userId) => {
   const favorites = await SavedRoom.findAll({
     where: { user_id: userId },
+    include: [
+      { model: Room, as: "room", include: [{ model: RoomImage, as: "images" }] },
+    ],
     order: [["created_at", "DESC"]],
   });
-  return favorites.map((f) => f.toJSON());
+
+  // A saved room can be orphaned if the owner later deletes the listing —
+  // skip those rather than returning a null `room`.
+  return favorites
+    .filter((favorite) => favorite.room)
+    .map((favorite) => ({ ...favorite.room.toJSON(), is_favorited: true }));
 };
 
 // ── SAVE A ROOM ───────────────────────────────────────────────

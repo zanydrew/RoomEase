@@ -5,8 +5,8 @@ const { success, error } = require("../utils/response");
 // Returns all rooms the logged-in user has saved.
 const getMyFavorites = async (req, res) => {
   try {
-    const favorites = await favoriteService.getMyFavorites(req.user.uuid);
-    return success(res, { favorites }, "OK");
+    const rooms = await favoriteService.getMyFavorites(req.user.uuid);
+    return success(res, { rooms }, "OK");
   } catch (err) {
     return error(res, err.message, err.status || 500);
   }
