@@ -74,6 +74,10 @@ export default function AuthProvider({ children }) {
     clearSession();
   }
 
+  function updateUser(partialUser) {
+    setUser((current) => ({ ...current, ...partialUser }));
+  }
+
   const value = {
     user,
     loading,
@@ -82,6 +86,7 @@ export default function AuthProvider({ children }) {
     loginWithGoogle,
     register,
     logout,
+    updateUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,252 +1,197 @@
-import { useState, useEffect } from 'react';
-import { adminGetUsers, adminBanUser, adminUnbanUser, adminVerifyOwner, adminGetAnalytics } from '../../features/admin/api/adminApi';
-import UserTable from '../../features/admin/components/UserTable';
-import usersIcon from '../../assets/users.svg';
-import ownersIcon from '../../assets/owners.svg';
-import rentersIcon from '../../assets/renters.svg';
-import searchIcon from '../../assets/search.svg';
-import './UserManagement.css';
+import { useEffect, useState } from 'react';
+import { Users as UsersIcon, KeyRound, UserRound, Search } from 'lucide-react';
+import UserTable from '../../components/dashboard/UserTable';
+import EditUserModal from '../../components/dashboard/EditUserModal';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import Pagination from '../../components/dashboard/Pagination';
+import ErrorState from '../../components/ui/ErrorState';
+import * as adminService from '../../services/adminService';
+import { notify } from '../../context/ToastConfig';
+
+const TABS = [
+  { key: 'ALL', label: 'All Users' },
+  { key: 'OWNER', label: 'Owners' },
+  { key: 'RENTER', label: 'Renters' },
+];
+const PAGE_SIZE = 10;
+
+// Maps the active tab to the correct role-specific service calls, since
+// /admin/renters and /admin/owners are separate endpoints from the
+// generic /admin/users.
+const SERVICE_BY_TAB = {
+  ALL: { list: adminService.getUsers, update: adminService.updateUser, del: adminService.deleteUser },
+  OWNER: { list: adminService.getOwners, update: adminService.updateOwner, del: adminService.deleteOwner },
+  RENTER: { list: adminService.getRenters, update: adminService.updateRenter, del: adminService.deleteRenter },
+};
 
 export default function UserManagement() {
   const [activeTab, setActiveTab] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
+  const [page, setPage] = useState(1);
   const [users, setUsers] = useState([]);
-  const [totalUsers, setTotalUsers] = useState(0);
+  const [total, setTotal] = useState(0);
   const [stats, setStats] = useState({ total: 0, owners: 0, renters: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const USERS_PER_PAGE = 10;
+
+  const [editTarget, setEditTarget] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    adminGetAnalytics()
+    adminService
+      .getAnalytics()
       .then((res) => {
         const userStats = res.data.data.analytics.users || {};
-        setStats({
-          total:   userStats.total || 0,
-          owners:  userStats.OWNER || 0,
-          renters: userStats.RENTER || 0,
-        });
+        setStats({ total: userStats.total || 0, owners: userStats.OWNER || 0, renters: userStats.RENTER || 0 });
       })
-      .catch((err) => {
-        console.error('Analytics load failed:', err);
-      });
+      .catch(() => {});
   }, []);
 
-  useEffect(() => {
+  function loadUsers() {
     setLoading(true);
     setError(null);
 
-    const params = {
-      page:   currentPage,
-      limit:  USERS_PER_PAGE,
-      search: searchQuery || undefined,
-      role:   activeTab !== 'ALL' ? activeTab : undefined,
-    };
-
-    adminGetUsers(params)
+    SERVICE_BY_TAB[activeTab]
+      .list({ page, limit: PAGE_SIZE, search: searchQuery || undefined })
       .then((res) => {
-        setUsers(res.data.data.users || []);
-        setTotalUsers(res.data.data.total || 0);
+        setUsers(res.data.data.users || res.data.data.owners || res.data.data.renters || []);
+        setTotal(res.data.data.total ?? 0);
       })
-      .catch((err) => {
-        const status = err.response?.status;
-        const msg = err.response?.data?.message || err.message;
-        if (status === 401 || status === 403) {
-          setError('You must be logged in as an ADMIN to view this page.');
-        } else {
-          setError(msg || 'Failed to load users.');
-        }
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, [activeTab, searchQuery, currentPage]);
+      .catch((err) => setError(err))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    loadUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, searchQuery, page]);
 
   function handleTabChange(tab) {
     setActiveTab(tab);
-    setCurrentPage(1);
+    setPage(1);
   }
 
-  function handleSearch(e) {
-    setSearchQuery(e.target.value);
-    setCurrentPage(1);
-  }
-
-  async function handleBan(uuid) {
-    if (!window.confirm('Are you sure you want to ban this user?')) return;
+  async function handleSaveEdit(payload) {
+    setBusy(true);
     try {
-      await adminBanUser(uuid);
-      setUsers((prev) =>
-        prev.map((u) => u.uuid === uuid ? { ...u, is_banned: true } : u)
-      );
+      await SERVICE_BY_TAB[activeTab].update(editTarget.uuid, payload);
+      notify.success('User updated successfully.');
+      setEditTarget(null);
+      loadUsers();
     } catch (err) {
-      const msg = err.response?.data?.message || err.message;
-      alert('Failed to ban user: ' + msg);
+      notify.error(err);
+    } finally {
+      setBusy(false);
     }
   }
 
-  async function handleUnban(uuid) {
+  async function handleConfirmDelete() {
+    setBusy(true);
     try {
-      await adminUnbanUser(uuid);
-      setUsers((prev) =>
-        prev.map((u) => u.uuid === uuid ? { ...u, is_banned: false } : u)
-      );
+      await SERVICE_BY_TAB[activeTab].del(deleteTarget.uuid);
+      notify.success('User deleted.');
+      setDeleteTarget(null);
+      loadUsers();
     } catch (err) {
-
-      alert('Failed to unban user: ' );
+      notify.error(err);
+    } finally {
+      setBusy(false);
     }
   }
 
-  async function handleVerify(uuid) {
-    if (!window.confirm('Are you sure you want to verify this owner?')) return;
-    try {
-      await adminVerifyOwner(uuid);
-      setUsers((prev) =>
-        prev.map((u) => u.uuid === uuid ? { ...u, is_verified: true } : u)
-      );
-    } catch (err) {
-      alert('Failed to verify owner: ' );
-    }
-  }
-
-  const totalPages = Math.ceil(totalUsers / USERS_PER_PAGE);
-
-  function getPageNumbers() {
-    const pages = [];
-    if (totalPages <= 5) {
-      for (let i = 1; i <= totalPages; i++) pages.push(i);
-    } else {
-      pages.push(1, 2, 3, '...', totalPages);
-    }
-    return pages;
-  }
+  const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
-    <div className="admin-page">
-      <h1 className="admin-page__title">Dashboard</h1>
-      <p className="admin-page__subtitle">
+    <div>
+      <h1 className="text-2xl font-bold text-text">Dashboard</h1>
+      <p className="mt-1 text-sm text-text-soft">
         Review and manage property submissions. Ensure every listing meets RoomEase's premium quality standards.
       </p>
 
-      <div className="stat-cards">
-        <div className="stat-card">
-          <div>
-            <p className="stat-card__label">Total Users</p>
-            <p className="stat-card__value">{stats.total.toLocaleString()}</p>
-          </div>
-          <div className="stat-card__icon-wrap">
-            <img src={usersIcon} alt="Users Icon" style={{ width: '22px', height: '22px' }} />
-          </div>
-        </div>
-
-        <div className="stat-card">
-          <div>
-            <p className="stat-card__label">Total Owners</p>
-            <p className="stat-card__value">{stats.owners.toLocaleString()}</p>
-          </div>
-          <div className="stat-card__icon-wrap">
-            <img src={ownersIcon} alt="Owners Icon" style={{ width: '22px', height: '22px' }} />
-          </div>
-        </div>
-
-        <div className="stat-card">
-          <div>
-            <p className="stat-card__label">Total Renters</p>
-            <p className="stat-card__value">{stats.renters.toLocaleString()}</p>
-          </div>
-          <div className="stat-card__icon-wrap">
-            <img src={rentersIcon} alt="Renters Icon" style={{ width: '22px', height: '22px' }} />
-          </div>
-        </div>
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <StatCard label="Total Users" value={stats.total} icon={UsersIcon} />
+        <StatCard label="Total Owners" value={stats.owners} icon={KeyRound} />
+        <StatCard label="Total Renters" value={stats.renters} icon={UserRound} />
       </div>
 
-      <div className="content-card">
-        <div className="tabs">
-          {['ALL', 'OWNER', 'RENTER'].map((tab) => (
+      <div className="mt-6 rounded-2xl border border-border bg-bg-card p-6">
+        <div className="flex gap-6 border-b border-border">
+          {TABS.map((tab) => (
             <button
-              key={tab}
-              className={`tab-btn ${activeTab === tab ? 'active' : ''}`}
-              onClick={() => handleTabChange(tab)}
+              key={tab.key}
+              type="button"
+              onClick={() => handleTabChange(tab.key)}
+              className={`-mb-px border-b-2 px-1 pb-3 text-sm font-semibold transition-colors ${
+                activeTab === tab.key ? 'border-gold-dark text-gold-dark' : 'border-transparent text-text-soft'
+              }`}
             >
-              {tab === 'ALL' && 'All Users'}
-              {tab === 'OWNER' && 'Owners'}
-              {tab === 'RENTER' && 'Renters'}
+              {tab.label}
             </button>
           ))}
         </div>
 
-        <div className="search-bar">
-          <div className="search-bar__icon">
-            <img src={searchIcon} alt="Search Icon" style={{ width: '16px', height: '16px' }} />
-          </div>
+        <div className="relative mt-4 max-w-md">
+          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
           <input
             type="text"
-            className="search-bar__input"
-            placeholder="Search name, email, or user ID..."
             value={searchQuery}
-            onChange={handleSearch}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setPage(1);
+            }}
+            placeholder="Search name, email, or user ID..."
+            className="w-full rounded-lg border border-border py-2.5 pl-9 pr-3 text-sm text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-gold-dark/30"
           />
         </div>
 
-        {loading && (
-          <p className="state-message">Loading users...</p>
-        )}
+        <div className="mt-5">
+          {error && <ErrorState message="Couldn't load users." onRetry={loadUsers} />}
+          {!error && loading && <p className="text-sm text-text-soft">Loading users...</p>}
+          {!error && !loading && <UserTable users={users} onEdit={setEditTarget} onDelete={setDeleteTarget} />}
+        </div>
 
-        {!loading && error && (
-          <p className="state-message state-message--error">{error}</p>
-        )}
-
-        {!loading && !error && (
-          <UserTable
-            users={users}
-            onBan={handleBan}
-            onUnban={handleUnban}
-            onVerify={handleVerify}
-          />
-        )}
-
-        {!loading && totalPages > 1 && (
-          <div className="pagination">
-            <p className="pagination__info">
-              Showing {((currentPage - 1) * USERS_PER_PAGE) + 1}–
-              {Math.min(currentPage * USERS_PER_PAGE, totalUsers)} of {totalUsers.toLocaleString()}
+        {!error && !loading && totalPages > 1 && (
+          <div className="mt-6 flex items-center justify-between">
+            <p className="text-xs text-text-soft">
+              Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)} of {total.toLocaleString()}
             </p>
-
-            <div className="pagination__buttons">
-              <button
-                className="pagination__btn"
-                onClick={() => setCurrentPage((p) => p - 1)}
-                disabled={currentPage === 1}
-              >
-                {'<'}
-              </button>
-
-              {getPageNumbers().map((page, index) =>
-                page === '...' ? (
-                  <span key={`ellip-${index}`} style={{ padding: '0 4px', color: '#aaa' }}>...</span>
-                ) : (
-                  <button
-                    key={`page-${page}`}
-                    className={`pagination__btn ${currentPage === page ? 'active' : ''}`}
-                    onClick={() => setCurrentPage(page)}
-                  >
-                    {page}
-                  </button>
-                )
-              )}
-
-              <button
-                className="pagination__btn"
-                onClick={() => setCurrentPage((p) => p + 1)}
-                disabled={currentPage === totalPages}
-              >
-                {'>'}
-              </button>
-            </div>
+            <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
           </div>
         )}
       </div>
+
+      <EditUserModal
+        open={!!editTarget}
+        user={editTarget}
+        saving={busy}
+        onClose={() => setEditTarget(null)}
+        onSave={handleSaveEdit}
+      />
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title={`Delete ${deleteTarget?.full_name}?`}
+        description="This will permanently delete this user's account. This action can't be undone."
+        confirmLabel="Delete"
+        loading={busy}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
+    </div>
+  );
+}
+
+function StatCard({ label, value, icon: Icon }) {
+  return (
+    <div className="flex items-center justify-between rounded-2xl border border-border bg-bg-card p-5">
+      <div>
+        <p className="text-sm text-text-soft">{label}</p>
+        <p className="mt-1 text-2xl font-bold text-text">{value.toLocaleString()}</p>
+      </div>
+      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-bg text-text-soft">
+        <Icon size={20} />
+      </span>
     </div>
   );
 }

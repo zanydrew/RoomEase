@@ -11,6 +11,17 @@ import { ROLES } from '../utils/constants';
 // yet render <PagePlaceholder/> below and get swapped for a lazy
 // import here as each feature is implemented.
 const Home = lazy(() => import('../pages/Home'));
+const Browse = lazy(() => import('../pages/Browse'));
+const RoomDetail = lazy(() => import('../pages/RoomDetail'));
+const Saved = lazy(() => import('../pages/Saved'));
+const Chat = lazy(() => import('../pages/chat/Chat'));
+const MyViewingRequests = lazy(() => import('../pages/renter/MyViewingRequests'));
+const RenterProfile = lazy(() => import('../pages/renter/RenterProfile'));
+const MyListings = lazy(() => import('../pages/owner/MyListings'));
+const PostRoom = lazy(() => import('../pages/owner/PostRoom'));
+const EditRoom = lazy(() => import('../pages/owner/EditRoom'));
+const OwnerViewingRequests = lazy(() => import('../pages/owner/OwnerViewingRequests'));
+const OwnerProfile = lazy(() => import('../pages/owner/OwnerProfile'));
 const Login = lazy(() => import('../pages/Login'));
 const SignUp = lazy(() => import('../pages/SignUp'));
 const UserManagement = lazy(() => import('../pages/admin/UserManagement'));
@@ -37,15 +48,16 @@ export default function AppRouter() {
           {/* Public pages */}
           <Route element={<PublicLayout />}>
             <Route path="/" element={<Home />} />
-            <Route path="/browse" element={<PagePlaceholder title="Browse" />} />
-            <Route path="/rooms/:roomId" element={<PagePlaceholder title="Room Detail" />} />
-            <Route path="/chat" element={<PagePlaceholder title="Chat" />} />
-            <Route path="/chat/:conversationId" element={<PagePlaceholder title="Chat" />} />
+            <Route path="/browse" element={<Browse />} />
+            <Route path="/rooms/:roomId" element={<RoomDetail />} />
 
-            {/* Renter-only within the public shell */}
             <Route element={<ProtectedRoute />}>
+              <Route path="/chat" element={<Chat />} />
+              <Route path="/chat/:conversationId" element={<Chat />} />
+
+              {/* Renter-only within the public shell */}
               <Route element={<RoleRoute roles={[ROLES.RENTER]} />}>
-                <Route path="/saved" element={<PagePlaceholder title="Saved Rooms" />} />
+                <Route path="/saved" element={<Saved />} />
               </Route>
             </Route>
           </Route>
@@ -56,24 +68,24 @@ export default function AppRouter() {
 
             <Route element={<RoleRoute roles={[ROLES.RENTER]} />}>
               <Route element={<DashboardLayout />}>
-                <Route path="/dashboard/renter/requests" element={<PagePlaceholder title="My Viewing Request" />} />
-                <Route path="/dashboard/renter/profile" element={<PagePlaceholder title="Renter Profile" />} />
+                <Route path="/dashboard/renter/requests" element={<MyViewingRequests />} />
+                <Route path="/dashboard/renter/profile" element={<RenterProfile />} />
               </Route>
             </Route>
 
             <Route element={<RoleRoute roles={[ROLES.OWNER]} />}>
               <Route element={<DashboardLayout />}>
-                <Route path="/dashboard/owner/listings" element={<PagePlaceholder title="My Listings" />} />
-                <Route path="/dashboard/owner/listings/new" element={<PagePlaceholder title="Post New Room" />} />
-                <Route path="/dashboard/owner/listings/:roomId/edit" element={<PagePlaceholder title="Edit Room" />} />
-                <Route path="/dashboard/owner/viewing-requests" element={<PagePlaceholder title="Viewing Requests" />} />
-                <Route path="/dashboard/owner/profile" element={<PagePlaceholder title="Owner Profile" />} />
+                <Route path="/dashboard/owner/listings" element={<MyListings />} />
+                <Route path="/dashboard/owner/listings/new" element={<PostRoom />} />
+                <Route path="/dashboard/owner/listings/:roomId/edit" element={<EditRoom />} />
+                <Route path="/dashboard/owner/viewing-requests" element={<OwnerViewingRequests />} />
+                <Route path="/dashboard/owner/profile" element={<OwnerProfile />} />
               </Route>
             </Route>
 
             <Route element={<RoleRoute roles={[ROLES.ADMIN]} />}>
               <Route element={<DashboardLayout />}>
-                <Route path="/dashboard/admin" element={<PagePlaceholder title="Admin Dashboard" />} />
+                <Route path="/dashboard/admin" element={<UserManagement />} />
                 <Route path="/dashboard/admin/users" element={<UserManagement />} />
               </Route>
             </Route>
