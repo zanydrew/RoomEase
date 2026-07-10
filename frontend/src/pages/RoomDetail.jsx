@@ -9,21 +9,21 @@ import RoomCard from '../components/room/RoomCard';
 import RoomCardSkeleton from '../components/room/RoomCardSkeleton';
 import StarRating from '../components/ui/StarRating';
 import ErrorState from '../components/ui/ErrorState';
+import RoomLocationMap from '../components/ui/RoomLocationMap';
 import useAsync from '../hooks/useAsync';
 import useFavorite from '../hooks/useFavorite';
 import * as roomService from '../services/roomService';
-
 export default function RoomDetail() {
   const { roomId } = useParams();
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
 
   const { data: room, loading, error, refetch } = useAsync(
-    () => roomService.getRoomById(roomId).then((res) => res.data.data),
+    () => roomService.getRoomById(roomId).then((res) => res.data.data.room),
     [roomId],
   );
 
   const { data: similarRooms, loading: similarLoading } = useAsync(
-    () => roomService.getSimilarRooms(roomId).then((res) => res.data.data),
+    () => roomService.getSimilarRooms(roomId).then((res) => res.data.data.rooms),
     [roomId],
   );
 
@@ -130,18 +130,8 @@ export default function RoomDetail() {
             <p className="mt-1 text-sm text-text-soft">
               {room.district}, {room.city}, Cambodia
             </p>
-            <div className="relative mt-4 flex h-64 items-center justify-center overflow-hidden rounded-2xl bg-[#e7ddc9]">
-              <div
-                className="absolute inset-0 opacity-50"
-                style={{
-                  backgroundImage:
-                    'repeating-linear-gradient(0deg, rgba(0,0,0,0.05) 0px, transparent 1px, transparent 36px), repeating-linear-gradient(90deg, rgba(0,0,0,0.05) 0px, transparent 1px, transparent 36px)',
-                }}
-              />
-              <span className="relative rounded-full bg-white px-4 py-2 text-xs font-semibold text-text shadow-md">
-                Exact location provided after booking
-              </span>
-              <MapPin size={22} className="absolute text-gold-dark" style={{ top: '58%' }} />
+            <div className="mt-4">
+              <RoomLocationMap room={room} />
             </div>
           </div>
         </div>

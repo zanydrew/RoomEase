@@ -9,6 +9,7 @@ import MapPreview from '../components/ui/MapPreview';
 import useAsync from '../hooks/useAsync';
 import * as roomService from '../services/roomService';
 import * as universityService from '../services/universityService';
+// import GoogleMapSection from '../components/googleMap/googleMaoSection';
 
 const RAIL_SIZE = 4;
 
@@ -123,6 +124,7 @@ export default function Home() {
         </div>
         <div className="mt-8">
           <MapPreview />
+          {/* <GoogleMapSection /> */}
         </div>
       </section>
     </div>

@@ -4,13 +4,14 @@ import { Home as HomeIcon } from 'lucide-react';
 import FilterSidebar from '../components/forms/FilterSidebar';
 import RoomCard from '../components/room/RoomCard';
 import RoomCardSkeleton from '../components/room/RoomCardSkeleton';
-import RoomMapPins from '../components/room/RoomMapPins';
 import EmptyState from '../components/ui/EmptyState';
 import ErrorState from '../components/ui/ErrorState';
 import Pagination from '../components/dashboard/Pagination';
 import useAsync from '../hooks/useAsync';
 import useDebounce from '../hooks/useDebounce';
 import * as roomService from '../services/roomService';
+import RoomLocationMap from '../components/ui/RoomLocationMap';
+import RoomsMap from '../components/room/RoomsMap';
 
 const PAGE_SIZE = 4;
 
@@ -35,7 +36,7 @@ export default function Browse() {
   // Reset to page 1 whenever a filter changes.
   useEffect(() => {
     setPage(1);
-  }, [debouncedMinPrice, debouncedMaxPrice, amenityIds]);
+  }, [keyword, district, universityId, sort, debouncedMinPrice, debouncedMaxPrice, amenityIds]);
 
   const { data, loading, error, refetch } = useAsync(
     () =>
@@ -52,7 +53,7 @@ export default function Browse() {
           limit: PAGE_SIZE,
         })
         .then((res) => res.data.data),
-    [debouncedMinPrice, debouncedMaxPrice, amenityIds, page],
+    [keyword, district, universityId, sort, debouncedMinPrice, debouncedMaxPrice, amenityIds, page],
   );
 
   const rooms = data?.rooms || [];
@@ -107,7 +108,7 @@ export default function Browse() {
         </div>
 
         <div className="hidden w-full max-w-sm shrink-0 lg:block">
-          {!loading && !error && <RoomMapPins rooms={rooms} />}
+          {!loading && !error &&  <RoomsMap rooms={rooms} loading={loading} /> }
         </div>
       </div>
     </div>
