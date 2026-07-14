@@ -1,24 +1,28 @@
-import client from '../api/client';
+import client from "../api/client";
 
 // ── Browsing ─────────────────────────────────────────────────────
 export function getRooms(params = {}) {
-  return client.get('/rooms', { params });
+  return client.get("/rooms", { params });
 }
 
 export function getFeaturedRooms(params = {}) {
-  return client.get('/rooms/featured', { params });
+  return client.get("/rooms/featured", { params });
+}
+
+export function getHomeSections(params = {}) {
+  return client.get("/rooms/home-sections", { params });
 }
 
 export function getLatestRooms(params = {}) {
-  return client.get('/rooms/latest', { params });
+  return client.get("/rooms/latest", { params });
 }
 
 export function getRoomsForMap(params = {}) {
-  return client.get('/rooms/map', { params });
+  return client.get("/rooms/map", { params });
 }
 
 export function getNearbyRooms(params = {}) {
-  return client.get('/rooms/nearby', { params });
+  return client.get("/rooms/nearby", { params });
 }
 
 export function getRoomById(roomId) {
@@ -32,9 +36,9 @@ export function getSimilarRooms(roomId) {
 // ── Images (owner-only on the backend) ──────────────────────────
 export function uploadRoomImages(roomId, files) {
   const formData = new FormData();
-  files.forEach((file) => formData.append('images', file));
+  files.forEach((file) => formData.append("images", file));
   return client.post(`/rooms/${roomId}/images`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
+    headers: { "Content-Type": "multipart/form-data" },
   });
 }
 
@@ -43,5 +47,7 @@ export function deleteRoomImage(roomId, imageId) {
 }
 
 export function setRoomImagePrimary(roomId, imageId) {
-  return client.patch(`/rooms/${roomId}/images/${imageId}`, { is_primary: true });
+  return client.patch(`/rooms/${roomId}/images/${imageId}`, {
+    is_primary: true,
+  });
 }

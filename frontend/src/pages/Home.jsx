@@ -13,6 +13,12 @@ import * as universityService from '../services/universityService';
 
 const RAIL_SIZE = 4;
 
+const SECTION_DISPLAY = {
+  district: (label) => ({ title: `Rooms around ${label}`, browseHref: `/browse?district=${encodeURIComponent(label)}` }),
+  university: (label) => ({ title: `Rooms around ${label}`, browseHref: '/browse' }),
+  affordable: () => ({ title: 'Affordable rooms for workers', browseHref: '/browse?sort=price_asc' }),
+};
+
 function RoomRail({ title, browseHref, rooms, loading, error }) {
   return (
     <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -47,46 +53,13 @@ function RoomRail({ title, browseHref, rooms, loading, error }) {
   );
 }
 
+
 export default function Home() {
-  // Rail 1 — a specific district
-  const toulKork = useAsync(
-    () => roomService.getRooms({ district: 'Toul Kork', limit: RAIL_SIZE }).then((res) => res.data.data.rooms),
+  const { data, loading, error, refetch } = useAsync(
+    () => roomService.getHomeSections({ limit: RAIL_SIZE }).then((res) => res.data.data.sections),
     [],
   );
-
-  // Rail 2 — rooms near Royal University of Phnom Penh. We look the
-  // university up by name since Home doesn't otherwise need the full list.
-  const rupp = useAsync(async () => {
-    const { data } = await universityService.getUniversities();
-    const universities = data.data.universities || [];
-    const match = universities.find((u) => u.name.toLowerCase().includes('royal university of phnom penh'));
-
-    const res = match
-      ? await roomService.getRooms({ university_id: match.id, limit: RAIL_SIZE })
-      : await roomService.getFeaturedRooms({ limit: RAIL_SIZE });
-
-    return res.data.data.rooms;
-  }, []);
-
-  // Rail 3 — "Affordable rooms for workers": cheapest rooms first.
-  const affordable = useAsync(
-    () => roomService.getRooms({ sort: 'price_asc', limit: RAIL_SIZE }).then((res) => res.data.data.rooms),
-    [],
-  );
-
-  const rails = useMemo(
-    () => [
-      { title: 'Rooms around Toul Kork', browseHref: '/browse?district=Toul+Kork', state: toulKork },
-      {
-        title: 'Rooms around Royal University of Phnom Penh',
-        browseHref: '/browse',
-        state: rupp,
-      },
-      { title: 'Affordable rooms for workers', browseHref: '/browse?sort=price_asc', state: affordable },
-    ],
-    [toulKork, rupp, affordable],
-  );
-
+ 
   return (
     <div>
       {/* Hero */}
@@ -97,23 +70,35 @@ export default function Home() {
           </h1>
         </div>
       </section>
-
+ 
       {/* Search bar overlapping the hero's bottom edge */}
       <div className="relative z-10 mx-auto -mt-8 max-w-4xl px-4 sm:-mt-10 sm:px-6 lg:px-8">
         <SearchBar />
       </div>
-
-      {rails.map((rail) => (
-        <RoomRail
-          key={rail.title}
-          title={rail.title}
-          browseHref={rail.browseHref}
-          rooms={rail.state.data || []}
-          loading={rail.state.loading}
-          error={rail.state.error}
-        />
-      ))}
-
+ 
+      {error && (
+        <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+          <ErrorState message="Couldn't load rooms for the homepage." onRetry={refetch} />
+        </section>
+      )}
+ 
+      {!error &&
+        (loading ? Array.from({ length: 3 }) : data).map((section, index) => {
+          const display = section
+            ? SECTION_DISPLAY[section.type](section.label)
+            : { title: '', browseHref: '/browse' };
+ 
+          return (
+            <RoomRail
+              key={section?.type || index}
+              title={display.title}
+              browseHref={display.browseHref}
+              rooms={section?.rooms || []}
+              loading={loading}
+            />
+          );
+        })}
+ 
       {/* Explore the Neighborhood */}
       <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
@@ -124,7 +109,6 @@ export default function Home() {
         </div>
         <div className="mt-8">
           <MapPreview />
-          {/* <GoogleMapSection /> */}
         </div>
       </section>
     </div>
