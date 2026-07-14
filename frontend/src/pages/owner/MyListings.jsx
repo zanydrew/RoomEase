@@ -9,6 +9,7 @@ import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import useAsync from '../../hooks/useAsync';
 import * as ownerService from '../../services/ownerService';
 import { notify } from '../../context/ToastConfig';
+import LoadingOverlay from '../../components/ui/LoadingOverlay';
 
 const PAGE_SIZE = 4;
 
@@ -28,11 +29,12 @@ export default function MyListings() {
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   async function handleConfirmDelete() {
+        const target = deleteTarget;
+    setDeleteTarget(null);
     setDeleting(true);
     try {
-      await ownerService.deleteRoom(deleteTarget);
+      await ownerService.deleteRoom(target);
       notify.success('Listing deleted.');
-      setDeleteTarget(null);
       refetch();
     } catch (err) {
       notify.error(err);
@@ -43,6 +45,7 @@ export default function MyListings() {
 
   return (
     <div>
+            {deleting && <LoadingOverlay message="Deleting room listing..." />}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-text">My Listings</h1>
@@ -104,7 +107,7 @@ export default function MyListings() {
       <ConfirmDialog
         open={!!deleteTarget}
         title="Delete this listing?"
-        description="This will permanently remove the listing. This action can't be undone."
+        description="This will permanently remove the listing."
         confirmLabel="Delete"
         loading={deleting}
         onConfirm={handleConfirmDelete}

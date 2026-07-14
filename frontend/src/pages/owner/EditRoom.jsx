@@ -6,6 +6,7 @@ import useAsync from '../../hooks/useAsync';
 import * as ownerService from '../../services/ownerService';
 import * as roomService from '../../services/roomService';
 import { notify } from '../../context/ToastConfig';
+import LoadingOverlay from '../../components/ui/LoadingOverlay';
 
 export default function EditRoom() {
   const { roomId } = useParams();
@@ -17,6 +18,7 @@ export default function EditRoom() {
   );
 
   const [images, setImages] = useState([]);
+    const [deletedImageIds, setDeletedImageIds] = useState([]);
   const [amenityIds, setAmenityIds] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [originalStatus, setOriginalStatus] = useState(null);

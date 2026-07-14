@@ -30,17 +30,15 @@ const updateMe = async (req, res) => {
 };
 
 // ── PATCH /api/users/me/avatar ────────────────────────────────
-// req.file is attached by the upload middleware (multer).
+
 const updateAvatar = async (req, res) => {
   try {
-    if (!req.file) {
-      return error(res, "No image file provided.", 400);
+    const { image } = req.body;
+    if (!image) {
+      return error(res, "No image data provided.", 400);
     }
 
-    const updated = await userService.updateAvatar(
-      req.user.uuid,
-      req.file.buffer,
-    );
+    const updated = await userService.updateAvatar(req.user.uuid, image);
     return success(res, { user: updated }, "Avatar updated successfully.");
   } catch (err) {
     return error(res, err.message, err.status || 500);

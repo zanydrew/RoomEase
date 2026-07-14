@@ -101,12 +101,21 @@ const getSimilarRooms = async (req, res) => {
 // ── POST /api/rooms/:roomId/images ────────────────────────────
 const uploadImages = async (req, res) => {
   try {
-    const images = await roomService.uploadImages(
+    const { images } = req.body;
+    if (!images || !Array.isArray(images) || images.length === 0) {
+      return error(res, "No image files provided.", 400);
+    }
+    const uploadedImages = await roomService.uploadImages(
       req.params.roomId,
       req.user.uuid,
-      req.files,
+      images,
     );
-    return success(res, { images }, "Images uploaded successfully.", 201);
+    return success(
+      res,
+      { images: uploadedImages },
+      "Images uploaded successfully.",
+      201,
+    );
   } catch (err) {
     return error(res, err.message, err.status || 500);
   }

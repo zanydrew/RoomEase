@@ -4,6 +4,7 @@ import RoomForm from '../../components/dashboard/RoomForm';
 import * as ownerService from '../../services/ownerService';
 import * as roomService from '../../services/roomService';
 import { notify } from '../../context/ToastConfig';
+import LoadingOverlay from '../../components/ui/LoadingOverlay';
 
 const DEFAULT_VALUES = {
   title: '',
@@ -76,6 +77,7 @@ export default function PostRoom() {
 
   return (
     <div>
+            {submitting && <LoadingOverlay message="Publishing your room listing..." />}
       <h1 className="text-2xl font-bold text-text">Post New Room</h1>
       <p className="mt-1 text-sm text-text-soft">
         Fill in the details below to list your premium property. Make sure to provide high-quality photos to

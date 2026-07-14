@@ -7,10 +7,7 @@ const {
   User,
   sequelize,
 } = require("../models");
-const {
-  uploadToCloudinary,
-  deleteFromCloudinary,
-} = require("../config/cloudinary");
+const { uploadImage, deleteFromCloudinary } = require("../utils/imageUpload");
 const { parsePagination } = require("../utils/pagination");
 
 // ── AMENITIES HELPER ───────────────────────────────────────────
@@ -141,7 +138,7 @@ const getAllRooms = async (query) => {
     ];
   }
 
-  const include = [amenitiesInclude, thumbnailInclude];
+  const include = [{ model: RoomImage, as: "images" }];
   if (query.university_id) {
     include.push({
       model: University,
@@ -187,9 +184,9 @@ const getOwnerRooms = async (ownerId, query) => {
     where.status = query.status;
   }
 
-  const { count, rows } = await Room.findAndCountAll({
+  const rooms = await Room.findAndCountAll({
     where,
-    include: [amenitiesInclude, thumbnailInclude],
+    include: [{ model: RoomImage, as: "images" }],
     limit,
     offset,
     order: [["created_at", "DESC"]],
@@ -212,6 +209,7 @@ const getFeaturedRooms = async (query) => {
 
   const rooms = await Room.findAll({
     where: { approval_status: "APPROVED", status: "AVAILABLE" },
+    include: [{ model: RoomImage, as: "images" }],
     limit,
     order: [["created_at", "DESC"]],
   });
@@ -318,7 +316,7 @@ const getLatestRooms = async (query) => {
 
   const rooms = await Room.findAll({
     where: { approval_status: "APPROVED", status: "AVAILABLE" },
-    include: [amenitiesInclude, thumbnailInclude],
+    include: [{ model: RoomImage, as: "images" }],
     limit,
     offset,
     order: [["created_at", "DESC"]],
@@ -616,10 +614,8 @@ const deleteRoom = async (roomId, ownerId) => {
 
   const images = await RoomImage.findAll({ where: { room_id: room.uuid } });
   for (const img of images) {
-    await deleteFromCloudinary(img.cloudinary_public_id).catch(() => {
-      console.warn(
-        `Could not delete image from Cloudinary: ${img.cloudinary_public_id}`,
-      );
+    await deleteFromCloudinary(img.image_url).catch(() => {
+      console.warn(`Could not delete image from Cloudinary: ${img.image_url}`);
     });
   }
 
@@ -681,8 +677,8 @@ const updateRoomStatus = async (roomId, ownerId, status) => {
  * @param {number} ownerId
  * @param {Array}  files   - array of file objects from multer (req.files)
  */
-const uploadImages = async (roomId, ownerId, files) => {
-  if (!files || files.length === 0) {
+const uploadImages = async (roomId, ownerId, images) => {
+  if (!images || images.length === 0) {
     throw { status: 400, message: "No image files provided." };
   }
 
@@ -701,7 +697,7 @@ const uploadImages = async (roomId, ownerId, files) => {
   const existingImages = await RoomImage.findAll({
     where: { room_id: room.uuid },
   });
-  if (existingImages.length + files.length > 10) {
+  if (existingImages.length + images.length > 10) {
     throw {
       status: 400,
       message: `A room can have at most 10 images. You already have ${existingImages.length}.`,
@@ -711,22 +707,21 @@ const uploadImages = async (roomId, ownerId, files) => {
   const hasPrimary = existingImages.some((img) => img.is_primary);
 
   const uploaded = await Promise.all(
-    files.map((file, index) =>
-      uploadToCloudinary(file.buffer, "roomease/rooms").then(
-        ({ url, public_id }) => ({
-          room_id: room.uuid,
-          image_url: url,
-          cloudinary_public_id: public_id,
-          is_primary: !hasPrimary && index === 0,
-          sort_order: existingImages.length + index,
-        }),
-      ),
+    images.map((base64Str, index) =>
+      uploadImage(base64Str, "roomease/rooms").then(({ url }) => ({
+        room_id: room.uuid,
+        image_url: url,
+        is_primary: !hasPrimary && index === 0,
+        sort_order: existingImages.length + index,
+      })),
     ),
   );
 
   await RoomImage.bulkCreate(uploaded);
-  const images = await RoomImage.findAll({ where: { room_id: room.uuid } });
-  return images.map((image) => image.toJSON());
+  const resultImages = await RoomImage.findAll({
+    where: { room_id: room.uuid },
+  });
+  return resultImages.map((image) => image.toJSON());
 };
 
 // ── DELETE IMAGE ──────────────────────────────────────────────
@@ -744,9 +739,9 @@ const deleteImage = async (roomId, imageId, ownerId) => {
   const deleted = await RoomImage.findByPk(imageId);
   if (!deleted) throw { status: 404, message: "Image not found." };
 
-  await deleteFromCloudinary(deleted.cloudinary_public_id).catch(() => {
+  await deleteFromCloudinary(deleted.image_url).catch(() => {
     console.warn(
-      `Could not delete image from Cloudinary: ${deleted.cloudinary_public_id}`,
+      `Could not delete image from Cloudinary: ${deleted.image_url}`,
     );
   });
 

@@ -215,7 +215,6 @@ router.post(
   "/:roomId/images",
   verifyToken,
   requireRole("OWNER"),
-  handleUpload(uploadMultiple),
   roomController.uploadImages,
 );
 

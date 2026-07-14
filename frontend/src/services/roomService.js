@@ -33,13 +33,18 @@ export function getSimilarRooms(roomId) {
   return client.get(`/rooms/${roomId}/similar`);
 }
 
-// ── Images (owner-only on the backend) ──────────────────────────
-export function uploadRoomImages(roomId, files) {
-  const formData = new FormData();
-  files.forEach((file) => formData.append("images", file));
-  return client.post(`/rooms/${roomId}/images`, formData, {
-    headers: { "Content-Type": "multipart/form-data" },
+const toBase64 = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
   });
+};
+
+export async function uploadRoomImages(roomId, files) {
+  const base64Images = await Promise.all(files.map(toBase64));
+  return client.post(`/rooms/${roomId}/images`, { images: base64Images });
 }
 
 export function deleteRoomImage(roomId, imageId) {

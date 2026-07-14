@@ -52,11 +52,7 @@ router.patch("/me", userController.updateMe);
  *       400: { description: No image file provided. }
  *       401: { description: Unauthorized }
  */
-router.patch(
-  "/me/avatar",
-  handleUpload(uploadSingle),
-  userController.updateAvatar,
-);
+router.patch("/me/avatar", userController.updateAvatar);
 
 /**
  * @swagger
