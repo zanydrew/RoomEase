@@ -22,11 +22,13 @@ export default function Browse() {
   // this page's own controls (price/amenities/pagination) drive the rest.
   const keyword = searchParams.get('keyword') || '';
   const district = searchParams.get('district') || '';
+  const universityName = searchParams.get('university') || '';
   const universityId = searchParams.get('university_id') || '';
   const sort = searchParams.get('sort') || '';
 
-  const [minPrice, setMinPrice] = useState(Number(searchParams.get('minPrice')) || 50);
+  const [minPrice, setMinPrice] = useState(Number(searchParams.get('minPrice')) || 10);
   const [maxPrice, setMaxPrice] = useState(Number(searchParams.get('maxPrice')) || 1000);
+  
   const [amenityIds, setAmenityIds] = useState([]);
   const [page, setPage] = useState(1);
 
@@ -46,8 +48,8 @@ export default function Browse() {
           district: district || undefined,
           university_id: universityId || undefined,
           sort: sort || undefined,
-          minPrice: debouncedMinPrice,
-          maxPrice: debouncedMaxPrice,
+        minPrice: debouncedMinPrice,
+        maxPrice: debouncedMaxPrice,
           amenities: amenityIds.length ? amenityIds.join(',') : undefined,
           page,
           limit: PAGE_SIZE,
@@ -59,7 +61,7 @@ export default function Browse() {
   const rooms = data?.rooms || [];
   const total = data?.total ?? rooms.length;
   const totalPages = Math.ceil(total / PAGE_SIZE);
-  const areaLabel = district || keyword || 'Phnom Penh';
+  const areaLabel = district || universityName || keyword || 'Phnom Penh';
 
   function toggleAmenity(id) {
     setAmenityIds((current) => (current.includes(id) ? current.filter((a) => a !== id) : [...current, id]));

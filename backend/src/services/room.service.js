@@ -159,7 +159,7 @@ const getAllRooms = async (query) => {
   };
   const order = sortOptions[query.sort] || sortOptions.newest;
 
-  const rooms = await Room.findAndCountAll({
+  const { count, rows } = await Room.findAndCountAll({
     where,
     include,
     limit,
@@ -296,6 +296,7 @@ const getHomeSections = async (query) => {
       {
         type: "university",
         label: universityMatch ? universityMatch.name : universityName,
+        id: universityMatch ? universityMatch.id : null,
         rooms: universityRooms.map(withThumbnail),
       },
       {

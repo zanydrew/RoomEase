@@ -15,7 +15,10 @@ const RAIL_SIZE = 4;
 
 const SECTION_DISPLAY = {
   district: (label) => ({ title: `Rooms around ${label}`, browseHref: `/browse?district=${encodeURIComponent(label)}` }),
-  university: (label) => ({ title: `Rooms around ${label}`, browseHref: '/browse' }),
+  university: (label, id) => ({
+    title: `Rooms around ${label}`,
+    browseHref: id ? `/browse?university_id=${id}&university=${encodeURIComponent(label)}` : '/browse',
+  }),
   affordable: () => ({ title: 'Affordable rooms for workers', browseHref: '/browse?sort=price_asc' }),
 };
 
@@ -84,9 +87,9 @@ export default function Home() {
  
       {!error &&
         (loading ? Array.from({ length: 3 }) : data).map((section, index) => {
-          const display = section
-            ? SECTION_DISPLAY[section.type](section.label)
-            : { title: '', browseHref: '/browse' };
+        const display = section
+          ? SECTION_DISPLAY[section.type](section.label, section.id)
+          : { title: '', browseHref: '/browse' };
  
           return (
             <RoomRail
