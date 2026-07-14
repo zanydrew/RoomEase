@@ -1,10 +1,97 @@
 const { Op } = require("sequelize");
-const { Room, RoomImage, University, sequelize } = require("../models");
+const {
+  Room,
+  RoomImage,
+  University,
+  Amenity,
+  User,
+  sequelize,
+} = require("../models");
 const {
   uploadToCloudinary,
   deleteFromCloudinary,
 } = require("../config/cloudinary");
 const { parsePagination } = require("../utils/pagination");
+
+// ── AMENITIES HELPER ───────────────────────────────────────────
+
+// Reusable attribute/include shape so every list & detail query surfaces
+// amenities the same way (no join-table columns leaking into the response).
+const amenitiesInclude = {
+  model: Amenity,
+  as: "amenities",
+  attributes: ["id", "name", "icon"],
+  through: { attributes: [] },
+};
+
+/**
+ * Validate and attach amenities to a room via the Room<->Amenity
+ * belongsToMany association (Room.belongsToMany(Amenity, { as: "amenities" })
+ * in models/index.js already gives every Room instance a setAmenities()
+ * mixin — no need to touch RoomAmenity directly).
+ *
+ * - `amenity_ids` undefined  → leave existing amenities untouched (used by
+ *   updateRoom, so a PATCH that doesn't mention amenities doesn't wipe them).
+ * - `amenity_ids` an array   → replace the room's amenities with exactly
+ *   this set (validates every id exists first; [] clears them all).
+ */
+const setRoomAmenities = async (room, amenity_ids) => {
+  if (amenity_ids === undefined) return;
+
+  if (!Array.isArray(amenity_ids)) {
+    throw {
+      status: 400,
+      message: "amenity_ids must be an array of amenity ids.",
+    };
+  }
+
+  if (amenity_ids.length === 0) {
+    await room.setAmenities([]);
+    return;
+  }
+
+  const ids = [...new Set(amenity_ids.map((id) => parseInt(id, 10)))];
+
+  if (ids.some((id) => isNaN(id))) {
+    throw { status: 400, message: "amenity_ids must contain only valid ids." };
+  }
+
+  const found = await Amenity.findAll({ where: { id: ids } });
+  if (found.length !== ids.length) {
+    throw { status: 400, message: "One or more amenity_ids do not exist." };
+  }
+
+  await room.setAmenities(ids);
+};
+
+// ── ROOM IMAGES (THUMBNAIL) HELPER ─────────────────────────────
+
+// List pages only need ONE cover photo per room, not the full gallery.
+// Filtering the eager-loaded association to is_primary: true (rather than
+// fetching all images and slicing in JS) keeps this a single SQL JOIN —
+// no extra round trip, no N+1, and no over-fetching of unused images.
+// `required: false` keeps rooms with no primary image yet (should not
+// normally happen — uploadImages() always assigns one — but a listing
+// with zero images uploaded is still valid and must still be returned).
+const thumbnailInclude = {
+  model: RoomImage,
+  as: "images",
+  attributes: ["uuid", "image_url", "sort_order"],
+  where: { is_primary: true },
+  required: false,
+};
+
+// Shapes a room's images the way the frontend list/browse pages expect:
+// { image_id, image_url, display_order }[] — at most one entry.
+const withThumbnail = (room) => {
+  const json = room.toJSON();
+  json.images = (json.images || []).map((img) => ({
+    image_id: img.uuid,
+    image_url: img.image_url,
+    display_order: img.sort_order,
+  }));
+  return json;
+};
 
 // ── GET ALL ROOMS ─────────────────────────────────────────────
 
@@ -26,10 +113,6 @@ const getAllRooms = async (query) => {
     where.city = query.city;
   }
 
-  // NOTE: `province` has no matching column on the Room model yet
-  // (only city/district exist). Accepted but ignored until the schema
-  // is extended — kept here so the query string shape matches the spec
-  // without throwing on unknown filters.
   // if (query.province) { where.province = query.province; }
 
   if (query.district) {
@@ -51,9 +134,6 @@ const getAllRooms = async (query) => {
     };
   }
 
-  // NOTE: `bedrooms` / `bathrooms` also have no matching columns yet.
-  // Accepted but ignored for the same reason as `province` above.
-
   if (query.keyword) {
     where[Op.or] = [
       { title: { [Op.like]: `%${query.keyword}%` } },
@@ -61,7 +141,7 @@ const getAllRooms = async (query) => {
     ];
   }
 
-  const include = [];
+  const include = [amenitiesInclude, thumbnailInclude];
   if (query.university_id) {
     include.push({
       model: University,
@@ -79,15 +159,17 @@ const getAllRooms = async (query) => {
   };
   const order = sortOptions[query.sort] || sortOptions.newest;
 
-  const rooms = await Room.findAll({
+  const rooms = await Room.findAndCountAll({
     where,
     include,
     limit,
     offset,
     order,
+    distinct: true,
+    col: "uuid",
   });
 
-  return { rooms: rooms.map((room) => room.toJSON()), page, limit };
+  return { rooms: rows.map(withThumbnail), page, limit, total: count };
 };
 
 // ── GET OWNER'S OWN ROOMS ─────────────────────────────────────
@@ -105,14 +187,17 @@ const getOwnerRooms = async (ownerId, query) => {
     where.status = query.status;
   }
 
-  const rooms = await Room.findAll({
+  const { count, rows } = await Room.findAndCountAll({
     where,
+    include: [amenitiesInclude, thumbnailInclude],
     limit,
     offset,
     order: [["created_at", "DESC"]],
+    distinct: true,
+    col: "uuid",
   });
 
-  return { rooms: rooms.map((room) => room.toJSON()), page, limit };
+  return { rooms: rows.map(withThumbnail), page, limit, total: count };
 };
 
 // ── GET FEATURED ROOMS ────────────────────────────────────────
@@ -134,6 +219,94 @@ const getFeaturedRooms = async (query) => {
   return { rooms: rooms.map((room) => room.toJSON()) };
 };
 
+// ── GET HOME PAGE SECTIONS ──────────────────────────────────────
+
+/**
+ * Pre-built room rails for the homepage, so the frontend can render the
+ * whole page from a single request instead of composing several
+ * independent calls (including a name → id university lookup) itself.
+ *
+ * - `district`: rooms in a specific district (defaults to "Toul Kork",
+ *   matching the Figma; pass ?district= to override).
+ * - `university`: rooms near a named university (defaults to "Royal
+ *   University of Phnom Penh"; falls back to newest rooms if no
+ *   university matches that name).
+ * - `affordable`: cheapest available rooms, price ascending.
+ */
+const getHomeSections = async (query) => {
+  const limit = Math.min(parseInt(query.limit) || 4, 20);
+  const baseWhere = { approval_status: "APPROVED", status: "AVAILABLE" };
+
+  const districtName = query.district || "Toul Kork";
+  const universityName = query.university || "Royal University of Phnom Penh";
+
+  const [districtRooms, universityMatch, affordableRooms] = await Promise.all([
+    Room.findAll({
+      where: { ...baseWhere, district: districtName },
+      include: [amenitiesInclude, thumbnailInclude],
+      limit,
+      order: [["created_at", "DESC"]],
+    }),
+    University.findOne({
+      where: { name: { [Op.like]: `%${universityName}%` } },
+    }),
+    Room.findAll({
+      where: baseWhere,
+      include: [amenitiesInclude, thumbnailInclude],
+      limit,
+      order: [["price_per_month", "ASC"]],
+    }),
+  ]);
+
+  let universityRooms;
+  if (universityMatch) {
+    universityRooms = await Room.findAll({
+      where: baseWhere,
+      include: [
+        amenitiesInclude,
+        thumbnailInclude,
+        {
+          model: University,
+          as: "nearbyUniversities",
+          where: { id: universityMatch.id },
+          attributes: [],
+        },
+      ],
+      limit,
+      order: [["created_at", "DESC"]],
+    });
+  } else {
+    // No matching university on record — fall back to the newest
+    // listings rather than returning an empty rail.
+    universityRooms = await Room.findAll({
+      where: baseWhere,
+      include: [amenitiesInclude, thumbnailInclude],
+      limit,
+      order: [["created_at", "DESC"]],
+    });
+  }
+
+  return {
+    sections: [
+      {
+        type: "district",
+        label: districtName,
+        rooms: districtRooms.map(withThumbnail),
+      },
+      {
+        type: "university",
+        label: universityMatch ? universityMatch.name : universityName,
+        rooms: universityRooms.map(withThumbnail),
+      },
+      {
+        type: "affordable",
+        label: null,
+        rooms: affordableRooms.map(withThumbnail),
+      },
+    ],
+  };
+};
+
 // ── GET LATEST ROOMS ──────────────────────────────────────────
 
 /**
@@ -144,12 +317,13 @@ const getLatestRooms = async (query) => {
 
   const rooms = await Room.findAll({
     where: { approval_status: "APPROVED", status: "AVAILABLE" },
+    include: [amenitiesInclude, thumbnailInclude],
     limit,
     offset,
     order: [["created_at", "DESC"]],
   });
 
-  return { rooms: rooms.map((room) => room.toJSON()), page, limit };
+  return { rooms: rooms.map(withThumbnail), page, limit };
 };
 
 // ── GET ROOMS FOR MAP ─────────────────────────────────────────
@@ -157,6 +331,12 @@ const getLatestRooms = async (query) => {
 /**
  * Lightweight list (uuid, title, price, location) for map pin rendering.
  * Supports the same district/city filters as the main search.
+ *
+ * Intentionally does NOT include images/amenities: a map view can render
+ * hundreds of pins at once, and pins don't display photos — adding images
+ * here would bloat the payload against this endpoint's own "lightweight"
+ * design goal. If the frontend's map pin/preview popup needs a thumbnail,
+ * say so and this can add the same thumbnailInclude used below.
  */
 const getRoomsForMap = async (query) => {
   const where = { approval_status: "APPROVED", status: "AVAILABLE" };
@@ -215,6 +395,7 @@ const getNearbyRooms = async (query) => {
       status: "AVAILABLE",
       [Op.and]: [sequelize.where(distanceExpr, { [Op.lte]: radiusMeters })],
     },
+    include: [amenitiesInclude, thumbnailInclude],
     attributes: {
       include: [[distanceExpr, "distance_meters"]],
     },
@@ -223,7 +404,7 @@ const getNearbyRooms = async (query) => {
     offset,
   });
 
-  return { rooms: rooms.map((room) => room.toJSON()), page, limit };
+  return { rooms: rooms.map(withThumbnail), page, limit };
 };
 
 // ── GET SINGLE ROOM ───────────────────────────────────────────
@@ -234,7 +415,21 @@ const getNearbyRooms = async (query) => {
  */
 const getRoomById = async (id) => {
   const room = await Room.findByPk(id, {
-    include: [{ model: RoomImage, as: "images" }],
+    include: [
+      { model: RoomImage, as: "images" },
+      amenitiesInclude,
+      {
+        model: User,
+        as: "owner",
+        attributes: ["uuid", "full_name", "phone_number", "avatar_url"],
+      },
+      {
+        model: University,
+        as: "nearbyUniversities",
+        attributes: ["id", "name"],
+        through: { attributes: ["distance_km", "walk_minutes"] },
+      },
+    ],
   });
 
   if (!room) {
@@ -278,11 +473,12 @@ const getSimilarRooms = async (roomId) => {
         },
       ],
     },
+    include: [amenitiesInclude, thumbnailInclude],
     limit: 6,
     order: [["created_at", "DESC"]],
   });
 
-  return similar.map((item) => item.toJSON());
+  return similar.map(withThumbnail);
 };
 
 // ── CREATE ROOM ───────────────────────────────────────────────
@@ -303,6 +499,7 @@ const createRoom = async (ownerId, body) => {
     longitude,
     room_type,
     size_sqm,
+    amenity_ids,
   } = body;
 
   if (!title || !price_per_month || !address || !room_type || !size_sqm) {
@@ -340,8 +537,17 @@ const createRoom = async (ownerId, body) => {
     ),
     room_type,
     status: "AVAILABLE",
-    approval_status: "PENDING",
+    approval_status: "APPROVED",
   });
+
+  // amenity_ids is optional on create — if provided, attach; if omitted,
+  // the room simply starts with no amenities (nothing to do).
+  await setRoomAmenities(room, amenity_ids);
+
+  const roomWithAmenities = await Room.findByPk(room.uuid, {
+    include: [amenitiesInclude],
+  });
+  return roomWithAmenities.toJSON();
 
   return room.toJSON();
 };
@@ -379,12 +585,15 @@ const updateRoom = async (roomId, ownerId, body) => {
   if (body.room_type !== undefined) updates.room_type = body.room_type;
   if (body.size_sqm !== undefined) updates.size_sqm = parseFloat(body.size_sqm);
 
-  if (room.status === "AVAILABLE") {
-    await room.update({ approval_status: "PENDING" });
-  }
-
   const updated = await room.update(updates);
-  return updated.toJSON();
+
+  // amenity_ids omitted → leave amenities as-is. Provided (even []) → replace.
+  await setRoomAmenities(updated, body.amenity_ids);
+
+  const roomWithAmenities = await Room.findByPk(updated.uuid, {
+    include: [amenitiesInclude],
+  });
+  return roomWithAmenities.toJSON();
 };
 
 // ── DELETE ROOM ───────────────────────────────────────────────
@@ -576,6 +785,7 @@ const setPrimaryImage = async (roomId, imageId, ownerId) => {
 module.exports = {
   getAllRooms,
   getFeaturedRooms,
+  getHomeSections,
   getLatestRooms,
   getRoomsForMap,
   getNearbyRooms,

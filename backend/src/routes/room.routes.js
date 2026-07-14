@@ -70,6 +70,37 @@ router.get("/featured", roomController.getFeaturedRooms);
 
 /**
  * @swagger
+ * /api/rooms/home-sections:
+ *   get:
+ *     summary: Get pre-built room rails for the homepage
+ *     description: >
+ *       Returns three room rails in one request: rooms in a given
+ *       district, rooms near a named university, and the cheapest
+ *       available rooms — avoiding separate round trips (including a
+ *       university name → id lookup) from the client.
+ *     tags: [Rooms]
+ *     parameters:
+ *       - in: query
+ *         name: district
+ *         schema: { type: string, default: Toul Kork }
+ *       - in: query
+ *         name: university
+ *         schema: { type: string, default: Royal University of Phnom Penh }
+ *         description: Matched against university names with LIKE %value%.
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 4 }
+ *         description: Rooms per rail.
+ *     responses:
+ *       200:
+ *         description: >
+ *           OK. `data.sections` is an array of 3 objects, each
+ *           `{ type: 'district'|'university'|'affordable', label, rooms }`.
+ */
+router.get("/home-sections", roomController.getHomeSections);
+
+/**
+ * @swagger
  * /api/rooms/latest:
  *   get:
  *     summary: Get the newest room listings

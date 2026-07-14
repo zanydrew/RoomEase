@@ -25,6 +25,18 @@ const getFeaturedRooms = async (req, res) => {
   }
 };
 
+// ── GET /api/rooms/home-sections ────────────────────────────────
+// Public — pre-built room rails for the homepage (district, near a
+// named university, and cheapest-first), built in one request.
+const getHomeSections = async (req, res) => {
+  try {
+    const result = await roomService.getHomeSections(req.query);
+    return success(res, result, "OK");
+  } catch (err) {
+    return error(res, err.message, err.status || 500);
+  }
+};
+
 // ── GET /api/rooms/latest ─────────────────────────────────────
 // Public — paginated newest-first listing.
 const getLatestRooms = async (req, res) => {
@@ -139,6 +151,7 @@ const updateImage = async (req, res) => {
 module.exports = {
   getAllRooms,
   getFeaturedRooms,
+  getHomeSections,
   getLatestRooms,
   getRoomsForMap,
   getNearbyRooms,
