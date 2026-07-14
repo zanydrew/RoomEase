@@ -1,16 +1,13 @@
 const bcrypt = require("bcryptjs");
 const { User } = require("../models");
 const {
-  uploadToCloudinary,
+  uploadImage,
   deleteFromCloudinary,
-} = require("../config/cloudinary");
+} = require("../utils/imageUpload");
 
 // ── GET MY PROFILE ────────────────────────────────────────────
 
-/**
- * Get the logged-in user's own profile.
- * req.user is already attached by verifyToken, so this just re-shapes it.
- */
+
 const getMyProfile = (user) => ({
   ...user.toJSON(),
   name: user.full_name,
@@ -19,11 +16,6 @@ const getMyProfile = (user) => ({
 
 // ── GENERIC PARTIAL UPDATE ────────────────────────────────────
 
-/**
- * Update one or more allowed fields on the logged-in user's own profile.
- * Used directly by PATCH /me, and reused by the single-field
- * PATCH /me/fullName, /me/phoneNumber, /me/location, /me/email routes.
- */
 const updateMe = async (userId, updates = {}) => {
   const currentUser = await User.findByPk(userId);
   if (!currentUser) {
@@ -68,48 +60,25 @@ const updateMe = async (userId, updates = {}) => {
 
 // ── UPDATE AVATAR ─────────────────────────────────────────────
 
-/**
- * Upload a new avatar image to Cloudinary and update the user record.
- * Deletes the old avatar from Cloudinary if one exists.
- *
- * @param {string} userId
- * @param {Buffer} fileBuffer  - from multer memoryStorage
- */
-const updateAvatar = async (userId, fileBuffer) => {
+
+const updateAvatar = async (userId, base64Image) => {
   const currentUser = await User.findByPk(userId);
   if (!currentUser) {
     throw { status: 404, message: "User not found." };
   }
 
   if (currentUser.avatar_url) {
-    const urlParts = currentUser.avatar_url.split("/upload/")[1];
-    if (urlParts) {
-      const publicId = urlParts.replace(/^v\d+\//, "").replace(/\.[^/.]+$/, "");
-      await deleteFromCloudinary(publicId).catch(() => {
-        console.warn(`Could not delete old avatar: ${publicId}`);
-      });
-    }
+    await deleteFromCloudinary(currentUser.avatar_url).catch(() => {
+      console.warn(`Could not delete old avatar: ${currentUser.avatar_url}`);
+    });
   }
 
-  const { url } = await uploadToCloudinary(fileBuffer, "roomease/avatars");
+  const { url } = await uploadImage(base64Image, "roomease/avatars");
   const updated = await currentUser.update({ avatar_url: url });
 
   return getMyProfile(updated);
 };
 
-// ── CHANGE PASSWORD ───────────────────────────────────────────
-// Not part of the new API design, but kept as an additional route
-// (PATCH /me/password) since removing it would drop existing,
-// security-relevant functionality that nothing else replaces.
-
-/**
- * Change the logged-in user's password.
- *
- * Rules:
- * - Must provide correct current password
- * - New password must be at least 6 characters
- * - Cannot reuse the same password
- */
 const changePassword = async (userId, { currentPassword, newPassword }) => {
   if (!newPassword || newPassword.length < 6) {
     throw {
@@ -149,12 +118,7 @@ const changePassword = async (userId, { currentPassword, newPassword }) => {
   await user.update({ password_hash: hashed });
 };
 
-// ── DELETE MY ACCOUNT ─────────────────────────────────────────
 
-/**
- * Permanently delete the logged-in user's own account.
- * Admin accounts cannot self-delete through this endpoint.
- */
 const deleteMe = async (userId) => {
   const user = await User.findByPk(userId);
   if (!user) {

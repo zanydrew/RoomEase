@@ -6,6 +6,7 @@ import useAsync from '../../hooks/useAsync';
 import * as ownerService from '../../services/ownerService';
 import * as roomService from '../../services/roomService';
 import { notify } from '../../context/ToastConfig';
+import LoadingOverlay from '../../components/ui/LoadingOverlay';
 
 export default function EditRoom() {
   const { roomId } = useParams();
@@ -17,6 +18,7 @@ export default function EditRoom() {
   );
 
   const [images, setImages] = useState([]);
+  const [deletedImageIds, setDeletedImageIds] = useState([]);
   const [amenityIds, setAmenityIds] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [originalStatus, setOriginalStatus] = useState(null);
@@ -30,37 +32,20 @@ export default function EditRoom() {
     setOriginalStatus(room.status);
   }, [room]);
 
-  async function handleImagesAdded(staged) {
-    try {
-      const uploadRes = await roomService.uploadRoomImages(roomId, staged.map((img) => img.file));
-      const uploaded = (uploadRes.data.data.images || []).map((img) => ({
-        id: img.id,
-        url: img.image_url,
-        is_primary: img.is_primary,
-        isNew: false,
-      }));
-      setImages((current) => [...current, ...uploaded]);
-    } catch (err) {
-      notify.error(err);
-    }
+  function handleImagesAdded(staged) {
+    setImages((current) => [...current, ...staged]);
   }
 
-  async function handleImageRemove(id) {
-    try {
-      await roomService.deleteRoomImage(roomId, id);
-      setImages((current) => current.filter((img) => img.id !== id));
-    } catch (err) {
-      notify.error(err);
+  function handleImageRemove(id) {
+    const targetImage = images.find((img) => img.id === id);
+    if (targetImage && !targetImage.isNew) {
+      setDeletedImageIds((current) => [...current, id]);
     }
+    setImages((current) => current.filter((img) => img.id !== id));
   }
 
-  async function handleImageSetCover(id) {
-    try {
-      await roomService.setRoomImagePrimary(roomId, id);
-      setImages((current) => current.map((img) => ({ ...img, is_primary: img.id === id })));
-    } catch (err) {
-      notify.error(err);
-    }
+  function handleImageSetCover(id) {
+    setImages((current) => current.map((img) => ({ ...img, is_primary: img.id === id })));
   }
 
   function handleToggleAmenity(id) {
@@ -88,6 +73,26 @@ export default function EditRoom() {
         await ownerService.updateRoomStatus(roomId, data.status);
       }
 
+      if (deletedImageIds.length > 0) {
+        await Promise.all(
+          deletedImageIds.map((id) => roomService.deleteRoomImage(roomId, id))
+        );
+      }
+
+      const newFiles = images.filter((img) => img.isNew).map((img) => img.file);
+      if (newFiles.length > 0) {
+        const uploadRes = await roomService.uploadRoomImages(roomId, newFiles);
+        const uploadedImages = uploadRes.data.data.images || [];
+
+        const primaryImage = images.find((img) => img.is_primary);
+        if (primaryImage && primaryImage.isNew) {
+          const newIndex = images.filter((img) => img.isNew).findIndex((img) => img.id === primaryImage.id);
+          if (newIndex >= 0 && uploadedImages[newIndex]) {
+            await roomService.setRoomImagePrimary(roomId, uploadedImages[newIndex].id);
+          }
+        }
+      }
+
       notify.success('Listing updated successfully.');
       navigate('/dashboard/owner/listings');
     } catch (err) {
@@ -107,6 +112,7 @@ export default function EditRoom() {
 
   return (
     <div>
+      {submitting && <LoadingOverlay message="Saving your changes..." />}
       <h1 className="text-2xl font-bold text-text">Edit Room</h1>
       <p className="mt-1 text-sm text-text-soft">Update your listing details to keep your room information accurate for potential tenants.</p>
 

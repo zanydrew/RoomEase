@@ -1,9 +1,7 @@
 const express = require("express");
 const cors = require("cors");
-const dotenv = require("dotenv");
 const swaggerJSDoc = require("swagger-jsdoc");
 const swaggerUi = require("swagger-ui-express");
-dotenv.config();
 
 const app = express();
 
@@ -14,8 +12,8 @@ app.use(
     credentials: true,
   }),
 );
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "25mb" }));
+app.use(express.urlencoded({ limit: "25mb", extended: true }));
 
 // ── API Routes ────────────────────────────────────────────────
 app.use("/api/auth", require("./routes/auth.routes"));

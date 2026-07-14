@@ -54,7 +54,6 @@ router.patch("/me", userController.updateMe);
  */
 router.patch(
   "/me/avatar",
-  handleUpload(uploadSingle),
   userController.updateAvatar,
 );
 
