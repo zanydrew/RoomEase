@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { LayoutGrid, PlusCircle, Calendar, MessageSquare, Users, LogOut, CircleUserRound, X } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
 import { ROLES } from '../../utils/constants';
@@ -6,8 +6,15 @@ import { ROLES } from '../../utils/constants';
 const NAV_CONFIG = {
   [ROLES.RENTER]: [{ to: '/dashboard/renter/requests', label: 'My Viewing Request', icon: Calendar }],
   [ROLES.OWNER]: [
-    { to: '/dashboard/owner/listings', label: 'My Listings', icon: LayoutGrid },
-    { to: '/dashboard/owner/listings/new', label: 'Post New Room', icon: PlusCircle },
+{
+  to: '/dashboard/owner/listings',
+  label: 'My Listings',
+  icon: LayoutGrid,
+  match: (pathname) =>
+    pathname === '/dashboard/owner/listings' ||
+    /^\/dashboard\/owner\/listings\/[^/]+\/edit$/.test(pathname),
+},
+{ to: '/dashboard/owner/listings/new', label: 'Post New Room', icon: PlusCircle, end: true },
     { to: '/dashboard/owner/viewing-requests', label: 'Viewing Requests', icon: Calendar },
     { to: '/chat', label: 'Messages', icon: MessageSquare },
   ],
@@ -34,6 +41,7 @@ export default function Sidebar({ mobileOpen = false, onClose = () => {} }) {
   const { user, logout } = useAuth();
   const navItems = NAV_CONFIG[user?.role] || [];
   const profileRoute = PROFILE_ROUTE[user?.role];
+  const { pathname } = useLocation();
 
   const content = (
     <div className="flex h-full flex-col bg-[#F6F3F2]">
@@ -64,7 +72,13 @@ export default function Sidebar({ mobileOpen = false, onClose = () => {} }) {
 
       <nav className="mt-6 flex flex-1 flex-col gap-1 px-3">
         {navItems.map((item) => (
-          <NavLink key={item.to} to={item.to} end={item.end} onClick={onClose} className={navItemClasses}>
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      end={item.end}
+                      onClick={onClose}
+                      className={item.match ? navItemClasses({ isActive: item.match(pathname) }) : navItemClasses}
+                    >
             <item.icon size={18} />
             {item.label}
           </NavLink>
