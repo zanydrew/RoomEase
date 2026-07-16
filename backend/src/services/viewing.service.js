@@ -1,4 +1,31 @@
-const { ViewingRequest, Room } = require("../models");
+const { ViewingRequest, Room, RoomImage, User } = require("../models");
+
+const viewingIncludes = [
+  {
+    model: Room,
+    as: "room",
+    attributes: ["uuid", "title", "price_per_month"],
+    include: [
+      {
+        model: RoomImage,
+        as: "images",
+        attributes: ["uuid", "image_url", "is_primary"],
+        where: { is_primary: true },
+        required: false,
+      },
+    ],
+  },
+  {
+    model: User,
+    as: "renter",
+    attributes: ["uuid", "full_name", "avatar_url", "phone_number"],
+  },
+  {
+    model: User,
+    as: "owner",
+    attributes: ["uuid", "full_name", "avatar_url", "phone_number"],
+  },
+];
 
 // ── REQUEST A VIEWING ─────────────────────────────────────────
 
@@ -50,6 +77,7 @@ const getMyRequests = async (renterId, status) => {
   if (status) where.status = status.toUpperCase();
   const requests = await ViewingRequest.findAll({
     where,
+    include: viewingIncludes,
     order: [["created_at", "DESC"]],
   });
   return requests.map((r) => r.toJSON());
@@ -62,6 +90,7 @@ const getIncomingRequests = async (ownerId, status) => {
   if (status) where.status = status.toUpperCase();
   const requests = await ViewingRequest.findAll({
     where,
+    include: viewingIncludes,
     order: [["created_at", "DESC"]],
   });
   return requests.map((r) => r.toJSON());
@@ -74,7 +103,9 @@ const getIncomingRequests = async (ownerId, status) => {
  * involved may view it.
  */
 const getViewingById = async (viewingId, userId) => {
-  const viewing = await ViewingRequest.findByPk(viewingId);
+  const viewing = await ViewingRequest.findByPk(viewingId, {
+    include: viewingIncludes,
+  });
   if (!viewing) throw { status: 404, message: "Viewing request not found." };
 
   const isParticipant =

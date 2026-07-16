@@ -74,19 +74,25 @@ const thumbnailInclude = {
   model: RoomImage,
   as: "images",
   attributes: ["uuid", "image_url", "sort_order"],
-  where: { is_primary: true },
-  required: false,
 };
 
 // Shapes a room's images the way the frontend list/browse pages expect:
 // { image_id, image_url, display_order }[] — at most one entry.
 const withThumbnail = (room) => {
   const json = room.toJSON();
-  json.images = (json.images || []).map((img) => ({
-    image_id: img.uuid,
-    image_url: img.image_url,
-    display_order: img.sort_order,
-  }));
+  const images = json.images || [];
+  const best =
+    images.find((img) => img.is_primary) ||
+    [...images].sort((a, b) => a.sort_order - b.sort_order)[0];
+  json.images = best
+    ? [
+        {
+          image_id: best.uuid,
+          image_url: best.image_url,
+          display_order: best.sort_order,
+        },
+      ]
+    : [];
   return json;
 };
 

@@ -1,5 +1,28 @@
 const { Op } = require("sequelize");
-const { Conversation, Message, Room } = require("../models");
+const { Conversation, Message, Room, RoomImage, User } = require("../models");
+
+const conversationIncludes = [
+  {
+    model: User,
+    as: "renter",
+    attributes: ["uuid", "full_name", "avatar_url"],
+  },
+  { model: User, as: "owner", attributes: ["uuid", "full_name", "avatar_url"] },
+  {
+    model: Room,
+    as: "room",
+    attributes: ["uuid", "title", "price_per_month"],
+    include: [
+      {
+        model: RoomImage,
+        as: "images",
+        attributes: ["uuid", "image_url", "is_primary"],
+        where: { is_primary: true },
+        required: false,
+      },
+    ],
+  },
+];
 
 // Auto-sent opening message when renter clicks "Chat Owner"
 const OPENING_MESSAGE =
@@ -34,7 +57,8 @@ const startConversation = async (renterId, roomId) => {
     },
   });
 
-  const conversation = existingConversation ||
+  const conversation =
+    existingConversation ||
     (await Conversation.create({
       room_id: room.uuid,
       renter_id: renterId,
@@ -56,6 +80,11 @@ const startConversation = async (renterId, roomId) => {
     });
   }
 
+  const conversationWithDetails = await Conversation.findByPk(
+    conversation.uuid,
+    { include: conversationIncludes },
+  );
+
   return {
     conversation: conversation.toJSON(),
     messages: messages.map((message) => message.toJSON()),
@@ -73,10 +102,33 @@ const getMyConversations = async (userId) => {
     where: {
       [Op.or]: [{ renter_id: userId }, { owner_id: userId }],
     },
+    include: conversationIncludes,
     order: [["updated_at", "DESC"]],
   });
 
-  return conversations.map((conversation) => conversation.toJSON());
+  return Promise.all(
+    conversations.map(async (conversation) => {
+      const [lastMessage, unreadCount] = await Promise.all([
+        Message.findOne({
+          where: { conversation_id: conversation.uuid },
+          order: [["created_at", "DESC"]],
+        }),
+        Message.count({
+          where: {
+            conversation_id: conversation.uuid,
+            sender_id: { [Op.ne]: userId },
+            is_read: false,
+          },
+        }),
+      ]);
+
+      return {
+        ...conversation.toJSON(),
+        lastMessage: lastMessage ? lastMessage.toJSON() : null,
+        unread_count: unreadCount,
+      };
+    }),
+  );
 };
 
 // ── GET MESSAGES IN A CONVERSATION ───────────────────────────
@@ -87,7 +139,9 @@ const getMyConversations = async (userId) => {
  * Only participants (renter or owner) can read the conversation.
  */
 const getMessages = async (conversationId, userId) => {
-  const conversation = await Conversation.findByPk(conversationId);
+  const conversation = await Conversation.findByPk(conversationId, {
+    include: conversationIncludes,
+  });
   if (!conversation) {
     throw { status: 404, message: "Conversation not found." };
   }
