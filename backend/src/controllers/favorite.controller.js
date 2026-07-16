@@ -5,8 +5,8 @@ const { success, error } = require("../utils/response");
 // Returns all rooms the logged-in user has saved.
 const getMyFavorites = async (req, res) => {
   try {
-    const favorites = await favoriteService.getMyFavorites(req.user.uuid);
-    return success(res, { favorites }, "OK");
+    const rooms = await favoriteService.getMyFavorites(req.user.uuid);
+    return success(res, { rooms }, "OK");
   } catch (err) {
     return error(res, err.message, err.status || 500);
   }
@@ -45,7 +45,10 @@ const unsaveRoom = async (req, res) => {
 // Used by the room detail page to show filled/empty heart icon.
 const checkIfSaved = async (req, res) => {
   try {
-    const saved = await favoriteService.isSaved(req.user.uuid, req.params.roomId);
+    const saved = await favoriteService.isSaved(
+      req.user.uuid,
+      req.params.roomId,
+    );
     return success(res, { saved }, "OK");
   } catch (err) {
     return error(res, err.message, err.status || 500);
