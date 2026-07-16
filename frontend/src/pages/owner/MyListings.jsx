@@ -9,6 +9,7 @@ import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import useAsync from '../../hooks/useAsync';
 import * as ownerService from '../../services/ownerService';
 import { notify } from '../../context/ToastConfig';
+import { Link } from 'react-router-dom';
 
 const PAGE_SIZE = 4;
 
@@ -57,7 +58,7 @@ export default function MyListings() {
           Post New Room
         </button>
       </div>
-
+      
       <h2 className="mt-8 text-lg font-bold text-text">All Listings</h2>
 
       {error && (
@@ -111,5 +112,6 @@ export default function MyListings() {
         onCancel={() => setDeleteTarget(null)}
       />
     </div>
+    
   );
 }

@@ -56,7 +56,7 @@ export default function AppRouter() {
               <Route path="/chat/:conversationId" element={<Chat />} />
 
               {/* Renter-only within the public shell */}
-              <Route element={<RoleRoute roles={[ROLES.RENTER]} />}>
+              <Route element={<RoleRoute roles={[ROLES.RENTER, ROLES.OWNER]} />}>
                 <Route path="/saved" element={<Saved />} />
               </Route>
             </Route>
@@ -66,7 +66,7 @@ export default function AppRouter() {
           <Route element={<ProtectedRoute />}>
             <Route path="/profile" element={<ProfileRedirect />} />
 
-            <Route element={<RoleRoute roles={[ROLES.RENTER]} />}>
+            <Route element={<RoleRoute roles={[ROLES.RENTER, ROLES.OWNER]} />}>
               <Route element={<DashboardLayout />}>
                 <Route path="/dashboard/renter/requests" element={<MyViewingRequests />} />
                 <Route path="/dashboard/renter/profile" element={<RenterProfile />} />

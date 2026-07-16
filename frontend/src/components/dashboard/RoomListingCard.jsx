@@ -10,7 +10,11 @@ export default function RoomListingCard({ room, onDelete, deleting }) {
   const isAvailable = room.status === ROOM_STATUS.AVAILABLE;
 
   return (
+    // <Link to={`/rooms/${room.uuid}`} >
+
     <div className="rounded-xl border border-border bg-bg-card p-3">
+          {/* <Link to={`/rooms/${room.uuid}`} className="group block"> */}
+
       <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg bg-bg">
         {coverImage ? (
           <img src={coverImage} alt={room.title} className="h-full w-full object-cover" />
@@ -19,11 +23,12 @@ export default function RoomListingCard({ room, onDelete, deleting }) {
             <ImageOff size={28} />
           </div>
         )}
+        
         <Badge variant={isAvailable ? 'success' : 'neutral'} dot className="absolute left-3 top-3 bg-white/90">
           {ROOM_STATUS_LABEL[room.status] || room.status}
         </Badge>
       </div>
-
+  {/* </Link> */}
       <div className="mt-3 flex items-center justify-between">
         <p className="text-base text-text">
           <span className="font-bold">${room.price_per_month}</span>
@@ -54,5 +59,6 @@ export default function RoomListingCard({ room, onDelete, deleting }) {
         </button>
       </div>
     </div>
-  );
+    //  </Link>
+  ); 
 }
