@@ -26,7 +26,7 @@ export default function EditRoom() {
   useEffect(() => {
     if (!room) return;
     setImages(
-      (room.images || []).map((img) => ({ id: img.id, url: img.image_url, is_primary: img.is_primary, isNew: false })),
+      (room.images || []).map((img) => ({ id: img.uuid, url: img.image_url, is_primary: img.is_primary, isNew: false })),
     );
     setAmenityIds((room.amenities || []).map((a) => a.id));
     setOriginalStatus(room.status);
@@ -36,7 +36,7 @@ export default function EditRoom() {
     try {
       const uploadRes = await roomService.uploadRoomImages(roomId, staged.map((img) => img.file));
       const uploaded = (uploadRes.data.data.images || []).map((img) => ({
-        id: img.id,
+        id: img.uuid,
         url: img.image_url,
         is_primary: img.is_primary,
         isNew: false,

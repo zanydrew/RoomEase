@@ -74,7 +74,9 @@ const getNearbyRooms = async (req, res) => {
 // Public — get a single room with all images.
 const getRoomById = async (req, res) => {
   try {
-    const room = await roomService.getRoomById(req.params.roomId);
+    const room = await roomService.getRoomById(req.params.roomId, {
+      countView: true,
+    });
     return success(res, { room }, "OK");
   } catch (err) {
     return error(res, err.message, err.status || 500);

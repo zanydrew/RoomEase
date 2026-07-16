@@ -184,7 +184,7 @@ const getOwnerRooms = async (ownerId, query) => {
     where.status = query.status;
   }
 
-  const rooms = await Room.findAndCountAll({
+  const { count, rows } = await Room.findAndCountAll({
     where,
     include: [{ model: RoomImage, as: "images" }],
     limit,
@@ -412,7 +412,7 @@ const getNearbyRooms = async (query) => {
  * Get a single room with all its images.
  * Increments the view counter each time someone opens the detail page.
  */
-const getRoomById = async (id) => {
+const getRoomById = async (id, { countView = false } = {}) => {
   const room = await Room.findByPk(id, {
     include: [
       { model: RoomImage, as: "images" },
@@ -435,7 +435,7 @@ const getRoomById = async (id) => {
     throw { status: 404, message: "Room not found." };
   }
 
-  if (room.approval_status === "APPROVED") {
+  if (countView && room.approval_status === "APPROVED") {
     await Room.update(
       { views_count: sequelize.literal("views_count + 1") },
       { where: { uuid: id } },
@@ -482,10 +482,6 @@ const getSimilarRooms = async (roomId) => {
 
 // ── CREATE ROOM ───────────────────────────────────────────────
 
-/**
- * Owner submits a new room listing.
- * Status starts as "pending" — admin must approve before it goes public.
- */
 const createRoom = async (ownerId, body) => {
   const {
     title,

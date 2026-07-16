@@ -59,7 +59,7 @@ export default function PostRoom() {
           const uploadedImages = uploadRes.data.data.images || [];
           const coverIndex = images.findIndex((img) => img.is_primary);
           if (coverIndex >= 0 && uploadedImages[coverIndex]) {
-            await roomService.setRoomImagePrimary(newRoom.uuid, uploadedImages[coverIndex].id);
+            await roomService.setRoomImagePrimary(newRoom.uuid, uploadedImages[coverIndex].uuid);
           }
         } catch {
           notify.error('Listing created, but some photos failed to upload. You can add them from Edit Room.');

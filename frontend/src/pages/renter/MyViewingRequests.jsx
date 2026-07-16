@@ -9,7 +9,7 @@ import { notify } from '../../context/ToastConfig';
 
 export default function MyViewingRequests() {
   const { data, loading, error, refetch } = useAsync(
-    () => viewingService.getMyRequests().then((res) => res.data.data.requests),
+    () => viewingService.getMyRequests().then((res) => res.data.data.viewings),
     [],
   );
   const [busyId, setBusyId] = useState(null);

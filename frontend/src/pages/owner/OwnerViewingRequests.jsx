@@ -14,7 +14,7 @@ import { notify } from '../../context/ToastConfig';
 export default function OwnerViewingRequests() {
   const navigate = useNavigate();
   const { data, loading, error, refetch } = useAsync(
-    () => viewingService.getOwnerRequests().then((res) => res.data.data.requests),
+    () => viewingService.getOwnerRequests().then((res) => res.data.data.viewings),
     [],
   );
   const [busyId, setBusyId] = useState(null);
