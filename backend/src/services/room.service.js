@@ -86,12 +86,12 @@ const withThumbnail = (room) => {
     [...images].sort((a, b) => a.sort_order - b.sort_order)[0];
   json.images = best
     ? [
-        {
-          image_id: best.uuid,
-          image_url: best.image_url,
-          display_order: best.sort_order,
-        },
-      ]
+      {
+        image_id: best.uuid,
+        image_url: best.image_url,
+        display_order: best.sort_order,
+      },
+    ]
     : [];
   return json;
 };
@@ -135,6 +135,22 @@ const getAllRooms = async (query) => {
       ...(where.price_per_month || {}),
       [Op.lte]: parseFloat(query.maxPrice),
     };
+  }
+
+  if (query.amenities) {
+    const amenityIds = query.amenities.split(",").map((id) => parseInt(id, 10));
+    const cleanIds = amenityIds.filter((id) => !isNaN(id));
+    if (cleanIds.length > 0) {
+      where.uuid = {
+        ...(where.uuid || {}),
+        [Op.in]: sequelize.literal(`(
+          SELECT room_id FROM ROOM_AMENITIES
+          WHERE amenity_id IN (${cleanIds.join(',')})
+          GROUP BY room_id
+          HAVING COUNT(DISTINCT amenity_id) = ${cleanIds.length}
+        )`)
+      };
+    }
   }
 
   if (query.keyword) {

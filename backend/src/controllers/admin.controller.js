@@ -1,17 +1,6 @@
 const adminService = require("../services/admin.service");
 const { success, error } = require("../utils/response");
 
-// ── DASHBOARD ─────────────────────────────────────────────────
-
-// GET /api/admin/dashboard
-const getDashboard = async (req, res) => {
-  try {
-    const dashboard = await adminService.getDashboard();
-    return success(res, dashboard, "OK");
-  } catch (err) {
-    return error(res, err.message, err.status || 500);
-  }
-};
 
 // GET /api/admin/analytics (extra endpoint, kept from the previous API)
 const getAnalytics = async (req, res) => {
@@ -23,47 +12,6 @@ const getAnalytics = async (req, res) => {
   }
 };
 
-// ── ROOM MODERATION (kept from the previous API) ──────────────
-
-const getPendingRooms = async (req, res) => {
-  try {
-    const result = await adminService.getPendingRooms(req.query);
-    return success(res, result, "OK");
-  } catch (err) {
-    return error(res, err.message, err.status || 500);
-  }
-};
-
-const getAllRooms = async (req, res) => {
-  try {
-    const result = await adminService.getAllRooms(req.query);
-    return success(res, result, "OK");
-  } catch (err) {
-    return error(res, err.message, err.status || 500);
-  }
-};
-
-const approveRoom = async (req, res) => {
-  try {
-    const room = await adminService.approveRoom(req.params.id);
-    return success(res, { room }, "Room approved and is now publicly visible.");
-  } catch (err) {
-    return error(res, err.message, err.status || 500);
-  }
-};
-
-const rejectRoom = async (req, res) => {
-  try {
-    const { rejection_reason } = req.body;
-    if (!rejection_reason) {
-      return error(res, "A rejection reason is required.", 400);
-    }
-    const room = await adminService.rejectRoom(req.params.id, rejection_reason);
-    return success(res, { room }, "Room rejected. Owner has been notified.");
-  } catch (err) {
-    return error(res, err.message, err.status || 500);
-  }
-};
 
 // ── USERS (generic) ────────────────────────────────────────────
 
@@ -77,25 +25,6 @@ const getAllUsers = async (req, res) => {
   }
 };
 
-// GET /api/admin/users/:id
-const getUserById = async (req, res) => {
-  try {
-    const user = await adminService.getUserById(req.params.id);
-    return success(res, { user }, "OK");
-  } catch (err) {
-    return error(res, err.message, err.status || 500);
-  }
-};
-
-// PATCH /api/admin/users/:id
-const updateUser = async (req, res) => {
-  try {
-    const user = await adminService.updateUser(req.params.id, req.body);
-    return success(res, { user }, "User updated successfully.");
-  } catch (err) {
-    return error(res, err.message, err.status || 500);
-  }
-};
 
 // DELETE /api/admin/users/:id
 const deleteUser = async (req, res) => {
@@ -118,27 +47,6 @@ const getAllRenters = async (req, res) => {
   }
 };
 
-const getRenterById = async (req, res) => {
-  try {
-    const user = await adminService.getUserById(req.params.id, "RENTER");
-    return success(res, { user }, "OK");
-  } catch (err) {
-    return error(res, err.message, err.status || 500);
-  }
-};
-
-const updateRenter = async (req, res) => {
-  try {
-    const user = await adminService.updateUser(
-      req.params.id,
-      req.body,
-      "RENTER",
-    );
-    return success(res, { user }, "Renter updated successfully.");
-  } catch (err) {
-    return error(res, err.message, err.status || 500);
-  }
-};
 
 const deleteRenter = async (req, res) => {
   try {
@@ -160,27 +68,6 @@ const getAllOwners = async (req, res) => {
   }
 };
 
-const getOwnerById = async (req, res) => {
-  try {
-    const user = await adminService.getUserById(req.params.id, "OWNER");
-    return success(res, { user }, "OK");
-  } catch (err) {
-    return error(res, err.message, err.status || 500);
-  }
-};
-
-const updateOwner = async (req, res) => {
-  try {
-    const user = await adminService.updateUser(
-      req.params.id,
-      req.body,
-      "OWNER",
-    );
-    return success(res, { user }, "Owner updated successfully.");
-  } catch (err) {
-    return error(res, err.message, err.status || 500);
-  }
-};
 
 const deleteOwner = async (req, res) => {
   try {
@@ -191,23 +78,42 @@ const deleteOwner = async (req, res) => {
   }
 };
 
+const banUser = async (req, res) => {
+  try {
+    const user = await adminService.banUser(req.params.id);
+    return success(res, { user }, "User banned successfully.");
+  } catch (err) {
+    return error(res, err.message, err.status || 500);
+  }
+};
+
+const unbanUser = async (req, res) => {
+  try {
+    const user = await adminService.unbanUser(req.params.id);
+    return success(res, { user }, "User unbanned successfully.");
+  } catch (err) {
+    return error(res, err.message, err.status || 500);
+  }
+};
+
+const verifyOwner = async (req, res) => {
+  try {
+    const user = await adminService.verifyOwner(req.params.id);
+    return success(res, { user }, "Owner verified successfully.");
+  } catch (err) {
+    return error(res, err.message, err.status || 500);
+  }
+};
+
 module.exports = {
-  getDashboard,
   getAnalytics,
-  getPendingRooms,
-  getAllRooms,
-  approveRoom,
-  rejectRoom,
   getAllUsers,
-  getUserById,
-  updateUser,
   deleteUser,
   getAllRenters,
-  getRenterById,
-  updateRenter,
   deleteRenter,
   getAllOwners,
-  getOwnerById,
-  updateOwner,
   deleteOwner,
+  banUser,
+  unbanUser,
+  verifyOwner,
 };

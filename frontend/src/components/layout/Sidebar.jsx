@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutGrid, PlusCircle, Calendar, MessageSquare, Users, LogOut, CircleUserRound, X } from 'lucide-react';
+import { LayoutGrid, PlusCircle, Calendar, MessageSquare, LogOut, CircleUserRound, X } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
 import { ROLES } from '../../utils/constants';
 
@@ -20,7 +20,6 @@ const NAV_CONFIG = {
   ],
   [ROLES.ADMIN]: [
     { to: '/dashboard/admin', label: 'Dashboard', icon: LayoutGrid, end: true },
-    { to: '/dashboard/admin/users', label: 'Users', icon: Users },
   ],
 };
 
@@ -45,9 +44,8 @@ export default function Sidebar({ mobileOpen = false, onClose = () => {} }) {
 
   const content = (
     <div className="flex h-full flex-col bg-[#F6F3F2]">
-      <div className="flex items-center justify-between px-5 pt-6">
-        <span className="text-lg font-extrabold text-gold-dark">RoomEase</span>
-        <button type="button" aria-label="Close menu" onClick={onClose} className="p-1 text-text md:hidden">
+      <div className="flex items-center justify-end px-4 pt-4 md:hidden">
+        <button type="button" aria-label="Close menu" onClick={onClose} className="p-1 text-text">
           <X size={20} />
         </button>
       </div>

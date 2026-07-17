@@ -3,7 +3,7 @@ import { Pencil } from 'lucide-react';
 import { MAX_IMAGE_SIZE_MB, ALLOWED_IMAGE_TYPES } from '../../utils/constants';
 import { notify } from '../../context/ToastConfig';
 
-export default function AvatarUpload({ avatarUrl, onUpload, uploading }) {
+export default function AvatarUpload({ avatarUrl, onUpload, onRemove, uploading }) {
   const fileInputRef = useRef(null);
 
   function handleFileChange(event) {
@@ -54,13 +54,16 @@ export default function AvatarUpload({ avatarUrl, onUpload, uploading }) {
         >
           {uploading ? 'Uploading...' : 'Upload New'}
         </button>
-        <button
-          type="button"
-          onClick={() => notify.error("Removing a profile picture isn't supported yet.")}
-          className="text-danger hover:underline"
-        >
-          Remove
-        </button>
+        {avatarUrl && (
+          <button
+            type="button"
+            disabled={uploading}
+            onClick={onRemove}
+            className="text-danger hover:underline disabled:opacity-60"
+          >
+            Remove
+          </button>
+        )}
       </div>
     </div>
   );

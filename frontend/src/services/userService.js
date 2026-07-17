@@ -27,6 +27,10 @@ export async function updateAvatar(file) {
   return client.patch("/users/me/avatar", { image: base64 });
 }
 
+export function deleteAvatar() {
+  return client.delete("/users/me/avatar");
+}
+
 export function changePassword({ current_password, new_password }) {
   return client.patch("/users/me/password", { current_password, new_password });
 }

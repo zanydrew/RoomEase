@@ -3,6 +3,7 @@ import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { MessageSquare, Globe, CircleUserRound, Menu, X } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
 import { getRoleHomeRoute } from '../../utils/roleRedirect';
+import { ROLES } from '../../utils/constants';
 
 const PUBLIC_NAV_LINKS = [
   { to: '/', label: 'Home', end: true },
@@ -25,18 +26,26 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-bg-card">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link to="/" className="text-xl font-extrabold text-gold-dark">
-          RoomEase
-        </Link>
+        {user?.role === ROLES.ADMIN ? (
+          <span className="text-xl font-extrabold text-gold-dark select-none">
+            RoomEase
+          </span>
+        ) : (
+          <Link to="/" className="text-xl font-extrabold text-gold-dark">
+            RoomEase
+          </Link>
+        )}
 
-        {/* Desktop nav links */}
-        <nav className="hidden items-center gap-8 md:flex">
-          {PUBLIC_NAV_LINKS.map((link) => (
-            <NavLink key={link.to} to={link.to} end={link.end} className={navLinkClasses}>
-              {link.label}
-            </NavLink>
-          ))}
-        </nav>
+
+        {user?.role !== ROLES.ADMIN && (
+          <nav className="hidden items-center gap-8 md:flex">
+            {PUBLIC_NAV_LINKS.filter((link) => link.to !== '/saved' || !user || user.role !== ROLES.ADMIN).map((link) => (
+              <NavLink key={link.to} to={link.to} end={link.end} className={navLinkClasses}>
+                {link.label}
+              </NavLink>
+            ))}
+          </nav>
+        )}
 
         {/* Desktop right-side icons */}
         <div className="hidden items-center gap-3 md:flex">
@@ -98,23 +107,24 @@ export default function Navbar() {
       {/* Mobile menu panel */}
       {mobileOpen && (
         <div className="border-t border-border bg-bg-card px-4 pb-4 md:hidden">
-          <nav className="flex flex-col gap-3 pt-3">
-            {PUBLIC_NAV_LINKS.map((link) => (
-              <NavLink
-                key={link.to}
-                to={link.to}
-                end={link.end}
-                onClick={() => setMobileOpen(false)}
-                className={({ isActive }) =>
-                  `rounded-md px-2 py-2 text-sm font-medium ${
-                    isActive ? 'bg-bg text-gold-dark' : 'text-text'
-                  }`
-                }
-              >
-                {link.label}
-              </NavLink>
-            ))}
-          </nav>
+          {user?.role !== ROLES.ADMIN && (
+            <nav className="flex flex-col gap-3 pt-3">
+              {PUBLIC_NAV_LINKS.filter((link) => link.to !== '/saved' || !user || user.role !== ROLES.ADMIN).map((link) => (
+                <NavLink
+                  key={link.to}
+                  to={link.to}
+                  end={link.end}
+                  onClick={() => setMobileOpen(false)}
+                  className={({ isActive }) =>
+                    `rounded-md px-2 py-2 text-sm font-medium ${isActive ? 'bg-bg text-gold-dark' : 'text-text'
+                    }`
+                  }
+                >
+                  {link.label}
+                </NavLink>
+              ))}
+            </nav>
+          )}
 
           <div className="mt-3 flex items-center gap-3 border-t border-border pt-3">
             {isAuthenticated ? (

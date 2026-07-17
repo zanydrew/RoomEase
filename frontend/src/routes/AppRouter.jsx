@@ -55,8 +55,8 @@ export default function AppRouter() {
               <Route path="/chat" element={<Chat />} />
               <Route path="/chat/:conversationId" element={<Chat />} />
 
-              {/* Renter-only within the public shell */}
-              <Route element={<RoleRoute roles={[ROLES.RENTER]} />}>
+              {/* Renter and Owner within the public shell */}
+              <Route element={<RoleRoute roles={[ROLES.RENTER, ROLES.OWNER]} />}>
                 <Route path="/saved" element={<Saved />} />
               </Route>
             </Route>
@@ -86,7 +86,6 @@ export default function AppRouter() {
             <Route element={<RoleRoute roles={[ROLES.ADMIN]} />}>
               <Route element={<DashboardLayout />}>
                 <Route path="/dashboard/admin" element={<UserManagement />} />
-                <Route path="/dashboard/admin/users" element={<UserManagement />} />
               </Route>
             </Route>
           </Route>

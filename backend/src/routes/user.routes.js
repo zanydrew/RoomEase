@@ -53,6 +53,7 @@ router.patch("/me", userController.updateMe);
  *       401: { description: Unauthorized }
  */
 router.patch("/me/avatar", userController.updateAvatar);
+router.delete("/me/avatar", userController.deleteAvatar);
 
 /**
  * @swagger

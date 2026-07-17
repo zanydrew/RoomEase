@@ -46,6 +46,19 @@ export default function ProfileForm({ title, subtitle }) {
     }
   }
 
+  async function handleAvatarRemove() {
+    setUploading(true);
+    try {
+      const res = await userService.deleteAvatar();
+      updateUser(res.data.data.user);
+      notify.success('Profile picture removed.');
+    } catch (err) {
+      notify.error(err);
+    } finally {
+      setUploading(false);
+    }
+  }
+
   return (
     <div>
       <h1 className="text-2xl font-bold text-text">{title}</h1>
@@ -53,7 +66,12 @@ export default function ProfileForm({ title, subtitle }) {
 
       <div className="mt-6 rounded-2xl border border-border bg-bg-card p-6">
         <div className="grid grid-cols-1 gap-8 sm:grid-cols-[auto_1fr]">
-          <AvatarUpload avatarUrl={user?.avatar_url} onUpload={handleAvatarUpload} uploading={uploading} />
+          <AvatarUpload
+            avatarUrl={user?.avatar_url}
+            onUpload={handleAvatarUpload}
+            onRemove={handleAvatarRemove}
+            uploading={uploading}
+          />
 
           <form onSubmit={handleSubmit(onSubmit)} noValidate>
             <h2 className="text-base font-bold text-text">Personal Details</h2>

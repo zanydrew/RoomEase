@@ -45,6 +45,17 @@ const updateAvatar = async (req, res) => {
   }
 };
 
+// ── DELETE /api/users/me/avatar ────────────────────────────────
+
+const deleteAvatar = async (req, res) => {
+  try {
+    const updated = await userService.deleteAvatar(req.user.uuid);
+    return success(res, { user: updated }, "Avatar removed successfully.");
+  } catch (err) {
+    return error(res, err.message, err.status || 500);
+  }
+};
+
 // ── PATCH /api/users/me/phoneNumber ───────────────────────────
 const updatePhoneNumber = async (req, res) => {
   try {
@@ -140,6 +151,7 @@ module.exports = {
   getMe,
   updateMe,
   updateAvatar,
+  deleteAvatar,
   updatePhoneNumber,
   updateLocation,
   updateFullName,

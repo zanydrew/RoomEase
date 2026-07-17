@@ -68,9 +68,25 @@ const updateAvatar = async (userId, base64Image) => {
     });
   }
 
-  const { url } = await uuploadImage(base64Image, "roomease/avatars");
+  const { url } = await uploadImage(base64Image, "roomease/avatars");
   const updated = await currentUser.update({ avatar_url: url });
 
+  return getMyProfile(updated);
+};
+
+const deleteAvatar = async (userId) => {
+  const currentUser = await User.findByPk(userId);
+  if (!currentUser) {
+    throw { status: 404, message: "User not found." };
+  }
+
+  if (currentUser.avatar_url) {
+    await deleteFromCloudinary(currentUser.avatar_url).catch(() => {
+      console.warn(`Could not delete old avatar: ${currentUser.avatar_url}`);
+    });
+  }
+
+  const updated = await currentUser.update({ avatar_url: null });
   return getMyProfile(updated);
 };
 
@@ -130,6 +146,7 @@ module.exports = {
   getMyProfile,
   updateMe,
   updateAvatar,
+  deleteAvatar,
   changePassword,
   deleteMe,
 };

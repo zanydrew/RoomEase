@@ -16,18 +16,6 @@ export function getOwners(params = {}) {
   return client.get('/admin/owners', { params });
 }
 
-export function updateUser(id, payload) {
-  return client.patch(`/admin/users/${id}`, payload);
-}
-
-export function updateRenter(id, payload) {
-  return client.patch(`/admin/renters/${id}`, payload);
-}
-
-export function updateOwner(id, payload) {
-  return client.patch(`/admin/owners/${id}`, payload);
-}
-
 export function deleteUser(id) {
   return client.delete(`/admin/users/${id}`);
 }
@@ -38,4 +26,16 @@ export function deleteRenter(id) {
 
 export function deleteOwner(id) {
   return client.delete(`/admin/owners/${id}`);
+}
+
+export function banUser(id) {
+  return client.put(`/admin/users/${id}/ban`);
+}
+
+export function unbanUser(id) {
+  return client.put(`/admin/users/${id}/unban`);
+}
+
+export function verifyOwner(id) {
+  return client.put(`/admin/users/${id}/verify`);
 }

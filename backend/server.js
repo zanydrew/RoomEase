@@ -1,11 +1,10 @@
+
+// This forces the backend to look one folder up for the .env file
+const dotenv = require("dotenv");
+dotenv.config({ path: "../.env" });
 const app = require("./src/app");
 const { sequelize } = require("./src/models");
 const PORT = process.env.PORT || 5000;
-const dotenv = require("dotenv");
-const path = require("path");
-// This forces the backend to look one folder up for the .env file
-dotenv.config({ path: path.resolve(process.cwd(), "../.env") });
-
 console.log(process.env.DATABASE_URL);
 
 // Prevent the server from crashing on unhandled errors
