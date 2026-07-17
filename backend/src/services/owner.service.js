@@ -44,7 +44,7 @@ const getStatistics = async (ownerId) => {
   const [rooms, viewingRequests] = await Promise.all([
     Room.findAll({
       where: { owner_id: ownerId },
-      attributes: ["approval_status", "status"],
+      attributes: [ "status"],
       raw: true,
     }),
     ViewingRequest.findAll({
@@ -55,22 +55,33 @@ const getStatistics = async (ownerId) => {
   ]);
 
   const roomStats = {
-    PENDING: 0,
-    APPROVED: 0,
-    REJECTED: 0,
     AVAILABLE: 0,
     RENTED: 0,
   };
-  for (const room of rooms) {
-    roomStats[room.approval_status] =
-      (roomStats[room.approval_status] || 0) + 1;
-    roomStats[room.status] = (roomStats[room.status] || 0) + 1;
-  }
 
-  const viewingStats = { PENDING: 0, APPROVED: 0, REJECTED: 0, SUGGESTED: 0 };
-  for (const viewing of viewingRequests) {
-    viewingStats[viewing.status] = (viewingStats[viewing.status] || 0) + 1;
-  }
+  rooms.forEach((room) => {
+    if (room.status === "AVAILABLE") {
+      roomStats.AVAILABLE += 1;
+    } else if (room.status === "RENTED") {
+      roomStats.RENTED += 1;
+    }
+  });
+
+  const viewingStats = {
+    TotalViewingRequest: viewingRequests.length,
+    PENDING: 0,
+    APPROVED: 0,
+    REJECTED: 0,
+  };
+  viewingRequests.forEach((request) => {
+    if (request.status === "PENDING") {
+      viewingStats.PENDING += 1;
+    } else if (request.status === "APPROVED") {
+      viewingStats.APPROVED += 1;
+    } else if (request.status === "REJECTED") {
+      viewingStats.REJECTED += 1;
+    }
+  });
 
   return {
     totalListings: rooms.length,

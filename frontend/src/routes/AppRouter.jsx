@@ -26,7 +26,7 @@ const Login = lazy(() => import('../pages/Login'));
 const SignUp = lazy(() => import('../pages/SignUp'));
 const UserManagement = lazy(() => import('../pages/admin/UserManagement'));
 const NotFound = lazy(() => import('../pages/NotFound'));
-
+// const Report = lazy(() => import('../pages/owner/Report'));
 function PageLoader() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg">
@@ -80,6 +80,8 @@ export default function AppRouter() {
                 <Route path="/dashboard/owner/listings/:roomId/edit" element={<EditRoom />} />
                 <Route path="/dashboard/owner/viewing-requests" element={<OwnerViewingRequests />} />
                 <Route path="/dashboard/owner/profile" element={<OwnerProfile />} />
+                <Route path="/dashboard/owner/reports" element={<PagePlaceholder title="Reports" />} />
+
               </Route>
             </Route>
 
