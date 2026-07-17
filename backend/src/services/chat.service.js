@@ -26,7 +26,7 @@ const conversationIncludes = [
 
 // Auto-sent opening message when renter clicks "Chat Owner"
 const OPENING_MESSAGE =
-  "Hi, I'm interested in this room. Is it still available?";
+  "hello !";
 
 // ── START OR OPEN A CONVERSATION ──────────────────────────────
 
@@ -37,17 +37,21 @@ const OPENING_MESSAGE =
  * - If a conversation already exists for this room+renter+owner → return it
  * - If not → create it and auto-send the opening message
  */
+
+
+//no approve room
 const startConversation = async (renterId, roomId) => {
   const room = await Room.findByPk(roomId);
   if (!room) {
     throw { status: 404, message: "Room not found." };
   }
-  if (room.approval_status !== "APPROVED" || room.status !== "AVAILABLE") {
+  if (room.status !== "AVAILABLE") {    
     throw { status: 400, message: "This room is not available." };
   }
-  if (room.owner_id === renterId) {
-    throw { status: 400, message: "You cannot chat with yourself." };
-  }
+  //owner can have a conversation with himself
+  // if (room.owner_id === renterId) {
+  //   throw { status: 400, message: "You cannot chat with yourself." };
+  // }
 
   const existingConversation = await Conversation.findOne({
     where: {
@@ -248,4 +252,4 @@ module.exports = {
   getMessages,
   sendMessage,
   markAsRead,
-};
+};  
