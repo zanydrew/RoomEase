@@ -86,12 +86,12 @@ const withThumbnail = (room) => {
     [...images].sort((a, b) => a.sort_order - b.sort_order)[0];
   json.images = best
     ? [
-      {
-        image_id: best.uuid,
-        image_url: best.image_url,
-        display_order: best.sort_order,
-      },
-    ]
+        {
+          image_id: best.uuid,
+          image_url: best.image_url,
+          display_order: best.sort_order,
+        },
+      ]
     : [];
   return json;
 };
@@ -145,18 +145,26 @@ const getAllRooms = async (query) => {
         ...(where.uuid || {}),
         [Op.in]: sequelize.literal(`(
           SELECT room_id FROM ROOM_AMENITIES
-          WHERE amenity_id IN (${cleanIds.join(',')})
+          WHERE amenity_id IN (${cleanIds.join(",")})
           GROUP BY room_id
           HAVING COUNT(DISTINCT amenity_id) = ${cleanIds.length}
-        )`)
+        )`),
       };
     }
   }
 
   if (query.keyword) {
+    const needle = `%${query.keyword.toLowerCase()}%`;
     where[Op.or] = [
-      { title: { [Op.like]: `%${query.keyword}%` } },
-      { address: { [Op.like]: `%${query.keyword}%` } },
+      sequelize.where(sequelize.fn("LOWER", sequelize.col("title")), {
+        [Op.like]: needle,
+      }),
+      sequelize.where(sequelize.fn("LOWER", sequelize.col("address")), {
+        [Op.like]: needle,
+      }),
+      sequelize.where(sequelize.fn("LOWER", sequelize.col("district")), {
+        [Op.like]: needle,
+      }),
     ];
   }
 
@@ -262,7 +270,13 @@ const getHomeSections = async (query) => {
 
   const [districtRooms, universityMatch, affordableRooms] = await Promise.all([
     Room.findAll({
-      where: { ...baseWhere, district: districtName },
+      where: {
+        ...baseWhere,
+        [Op.and]: sequelize.where(
+          sequelize.fn("LOWER", sequelize.col("district")),
+          districtName.toLowerCase(),
+        ),
+      },
       include: [amenitiesInclude, thumbnailInclude],
       limit,
       order: [["created_at", "DESC"]],
