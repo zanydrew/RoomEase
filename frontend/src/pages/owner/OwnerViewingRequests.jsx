@@ -40,7 +40,7 @@ export default function OwnerViewingRequests() {
     }
   }
 
-  async function handleReject(id) {
+  async function handleReject( id) {
     setBusyId(id);
     try {
       await viewingService.rejectViewing(id);

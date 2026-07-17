@@ -102,6 +102,8 @@ export default function ViewingRequestCard({ request, onCancel, onReschedule, on
           >
             Cancel Request
           </button>
+        ) : request.status === VIEWING_STATUS.REJECTED ? (
+          <span className="text-sm text-text-soft">sorry, the room have been rented at the moment</span>
         ) : null}
       </div>
     </div>

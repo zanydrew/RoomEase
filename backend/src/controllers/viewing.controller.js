@@ -81,7 +81,7 @@ const rejectViewing = async (req, res) => {
     const viewing = await viewingService.rejectViewing(
       req.params.id,
       req.user.uuid,
-      req.body.owner_note,
+   
     );
     return success(res, { viewing }, "Viewing request rejected.");
   } catch (err) {

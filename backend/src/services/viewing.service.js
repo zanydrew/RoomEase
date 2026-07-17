@@ -142,7 +142,7 @@ const acceptViewing = async (viewingId, ownerId) => {
 
 // ── REJECT ────────────────────────────────────────────────────
 
-const rejectViewing = async (viewingId, ownerId, notes) => {
+const rejectViewing = async (viewingId, ownerId ) => {
   const viewing = await ViewingRequest.findByPk(viewingId);
   if (!viewing) throw { status: 404, message: "Viewing request not found." };
   if (viewing.owner_id !== ownerId) {
@@ -158,7 +158,7 @@ const rejectViewing = async (viewingId, ownerId, notes) => {
     };
   }
 
-  await viewing.update({ status: "REJECTED", notes: notes || viewing.notes });
+  await viewing.update({ status: "REJECTED", notes: "sorry, the room have been rented at the moment" });
 
   return viewing.toJSON();
 };
