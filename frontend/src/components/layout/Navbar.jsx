@@ -49,13 +49,13 @@ export default function Navbar() {
 
         {/* Desktop right-side icons */}
         <div className="hidden items-center gap-3 md:flex">
-          <button
+          {/* <button
             type="button"
             aria-label="Change language"
             className="rounded-full p-2 text-text-soft transition-colors hover:bg-bg hover:text-text"
           >
             <Globe size={20} />
-          </button>
+          </button> */}
 
           {isAuthenticated ? (
             <>
