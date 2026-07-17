@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { CheckCircle2, MessageSquare } from 'lucide-react';
+import { CheckCircle2, MessageSquare, Clock } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
 import * as viewingService from '../../services/viewingService';
 import * as conversationService from '../../services/conversationService';
@@ -12,6 +12,28 @@ export default function BookingCard({ room }) {
   const navigate = useNavigate();
   const [requestSent, setRequestSent] = useState(false);
   const [chatLoading, setChatLoading] = useState(false);
+  const [existingRequest, setExistingRequest] = useState(null);
+  const [checkingRequest, setCheckingRequest] = useState(true);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setCheckingRequest(false);
+      return;
+    }
+    viewingService
+      .getMyRequests()
+      .then((res) => {
+        const requests = res.data?.data?.requests ?? res.data?.data ?? [];
+        const active = requests.find(
+          (r) =>
+            r.room_id === room.uuid &&
+            ['PENDING', 'APPROVED', 'SUGGESTED'].includes(r.status),
+        );
+        if (active) setExistingRequest(active);
+      })
+      .catch(() => {})
+      .finally(() => setCheckingRequest(false));
+  }, [isAuthenticated, room.uuid]);
 
   const {
     register,
@@ -72,6 +94,39 @@ export default function BookingCard({ room }) {
         <p className="mt-4 text-xs text-text-soft">
           You can manage all your viewing requests in your dashboard.
         </p>
+      </div>
+    );
+  }
+
+  if (!checkingRequest && existingRequest) {
+    const statusLabels = {
+      PENDING: 'Pending',
+      APPROVED: 'Approved',
+      SUGGESTED: 'Awaiting your response',
+    };
+    return (
+      <div className="rounded-2xl border border-border bg-bg-card p-6 shadow-sm">
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gold-dark/10 text-gold-dark">
+            <Clock size={20} />
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-text">Already Requested</p>
+            <p className="text-xs text-text-soft">
+              Status: {statusLabels[existingRequest.status] || existingRequest.status}
+            </p>
+          </div>
+        </div>
+        <p className="mt-3 text-sm text-text-soft">
+          You already have an active viewing request for this room. You can cancel it from your dashboard to request a new time.
+        </p>
+        <button
+          type="button"
+          onClick={() => navigate('/dashboard/renter/requests')}
+          className="mt-4 w-full rounded-full bg-gold-dark py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+        >
+          View My Requests
+        </button>
       </div>
     );
   }

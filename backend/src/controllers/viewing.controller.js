@@ -4,13 +4,14 @@ const { success, error } = require("../utils/response");
 // ── POST /api/viewing-requests ────────────────────────────────
 // Renter requests a viewing for a room.
 const requestViewing = async (req, res) => {
+  
   try {
-    const { room_id, requested_date, requested_time, renter_note } = req.body;
+    const { room_id, requested_date, requested_time } = req.body;
     const viewing = await viewingService.requestViewing(req.user.uuid, {
       room_id,
       requested_date,
       requested_time,
-      renter_note,
+     
     });
     return success(res, { viewing }, "Viewing request sent successfully.", 201);
   } catch (err) {

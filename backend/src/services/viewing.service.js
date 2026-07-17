@@ -1,4 +1,5 @@
 const { ViewingRequest, Room, RoomImage, User } = require("../models");
+const { Op } = require("sequelize");
 
 const viewingIncludes = [
   {
@@ -31,13 +32,15 @@ const viewingIncludes = [
 
 const requestViewing = async (
   renterId,
-  { room_id, requested_date, requested_time, renter_note },
+  { room_id, requested_date, requested_time },
 ) => {
+  
   if (!room_id || !requested_date || !requested_time) {
     throw { status: 400, message: "Room, date, and time are required." };
   }
 
   const room = await Room.findByPk(room_id);
+  
   if (!room) throw { status: 404, message: "Room not found." };
   if (room.approval_status !== "APPROVED" || room.status !== "AVAILABLE") {
     throw { status: 400, message: "This room is not available for viewing." };
@@ -46,6 +49,20 @@ const requestViewing = async (
     throw {
       status: 400,
       message: "You cannot request a viewing on your own listing.",
+    };
+  }
+
+  const existingRequest = await ViewingRequest.findOne({
+    where: {
+      room_id,
+      renter_id: renterId,
+      status: { [Op.in]: ["PENDING", "APPROVED", "SUGGESTED"] },
+    },
+  });
+  if (existingRequest) {
+    throw {
+      status: 400,
+      message: "You already have an active viewing request for this room. Wait for the owner to respond or cancel your existing request.",
     };
   }
 
