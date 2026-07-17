@@ -30,6 +30,7 @@ app.use("/api/conversations", require("./routes/conversation.routes"));
 app.use("/api/owner", require("./routes/owner.routes"));
 app.use("/api/admin", require("./routes/admin.routes"));
 app.use("/api/amenities", require("./routes/amenity.routes"));
+app.use("/api/universities", require("./routes/university.routes"));
 
 // ── Health check ──────────────────────────────────────────────
 app.get("/api/health", (req, res) => {
