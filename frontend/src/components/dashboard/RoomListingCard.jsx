@@ -11,29 +11,35 @@ export default function RoomListingCard({ room, onDelete, deleting }) {
 
   return (
     <div className="rounded-xl border border-border bg-bg-card p-3">
-      <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg bg-bg">
-        {coverImage ? (
-          <img src={coverImage} alt={room.title} className="h-full w-full object-cover" />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-text-muted">
-            <ImageOff size={28} />
-          </div>
-        )}
-        <Badge variant={isAvailable ? 'success' : 'neutral'} dot className="absolute left-3 top-3 bg-white/90">
-          {ROOM_STATUS_LABEL[room.status] || room.status}
-        </Badge>
-      </div>
+      <button
+        type="button"
+        onClick={() => navigate(`/rooms/${room.uuid}`)}
+        className="block w-full text-left"
+      >
+        <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg bg-bg">
+          {coverImage ? (
+            <img src={coverImage} alt={room.title} className="h-full w-full object-cover" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-text-muted">
+              <ImageOff size={28} />
+            </div>
+          )}
+          <Badge variant={isAvailable ? 'success' : 'neutral'} dot className="absolute left-3 top-3 bg-white/90">
+            {ROOM_STATUS_LABEL[room.status] || room.status}
+          </Badge>
+        </div>
 
-      <div className="mt-3 flex items-center justify-between">
-        <p className="text-base text-text">
-          <span className="font-bold">${room.price_per_month}</span>
-          <span className="text-text-soft">/mo</span>
+        <div className="mt-3 flex items-center justify-between">
+          <p className="text-base text-text">
+            <span className="font-bold">${room.price_per_month}</span>
+            <span className="text-text-soft">/mo</span>
+          </p>
+          <StarRating rating={room.rating} />
+        </div>
+        <p className="text-sm text-text-soft">
+          {room.district}, {room.city}
         </p>
-        <StarRating rating={room.rating} />
-      </div>
-      <p className="text-sm text-text-soft">
-        {room.district}, {room.city}
-      </p>
+      </button>
 
       <div className="mt-3 flex gap-2 border-t border-border pt-3">
         <button
