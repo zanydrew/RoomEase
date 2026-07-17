@@ -1,8 +1,6 @@
 const { Room, User, sequelize } = require("../models");
 const { parsePagination } = require("../utils/pagination");
 
-
-
 // ── USER MANAGEMENT ───────────────────────────────────────────
 
 const shapeUser = (user) => ({
@@ -69,17 +67,26 @@ const getUserById = async (userId, expectedRole) => {
  * Ban a user — blocks them from all protected actions.
  * Cannot ban another admin.
  */
-const banUser = async (user) => {
+const banUser = async (userId) => {
+  const user = await User.findByPk(userId);
+  if (!user) throw { status: 404, message: "User not found." };
   if (user.role === "ADMIN") {
     throw { status: 403, message: "Admin accounts cannot be banned." };
   }
-  return user.update({ is_banned: true });
+  await user.update({ is_banned: true });
+  return shapeUser(user);
 };
 
 /**
  * Unban a user — restores their access.
  */
-const unbanUser = async (user) => user.update({ is_banned: false });
+
+const unbanUser = async (userId) => {
+  const user = await User.findByPk(userId);
+  if (!user) throw { status: 404, message: "User not found." };
+  await user.update({ is_banned: false });
+  return shapeUser(user);
+};
 
 /**
  * Verify an owner — marks them as a trusted landlord.
