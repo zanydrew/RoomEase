@@ -80,7 +80,6 @@ export default function AppRouter() {
                 <Route path="/dashboard/owner/listings/:roomId/edit" element={<EditRoom />} />
                 <Route path="/dashboard/owner/viewing-requests" element={<OwnerViewingRequests />} />
                 <Route path="/dashboard/owner/profile" element={<OwnerProfile />} />
-                <Route path="/dashboard/owner/reports" element={<PagePlaceholder title="Reports" />} />
 
               </Route>
             </Route>

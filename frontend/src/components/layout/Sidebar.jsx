@@ -17,7 +17,6 @@ const NAV_CONFIG = {
 { to: '/dashboard/owner/listings/new', label: 'Post New Room', icon: PlusCircle, end: true },
     { to: '/dashboard/owner/viewing-requests', label: 'Viewing Requests', icon: Calendar },
     { to: '/chat', label: 'Messages', icon: MessageSquare },
-    { to: '/dashboard/owner/reports', label: 'Reports', icon: LayoutGrid },
   ],
   [ROLES.ADMIN]: [
     { to: '/dashboard/admin', label: 'Dashboard', icon: LayoutGrid, end: true },
