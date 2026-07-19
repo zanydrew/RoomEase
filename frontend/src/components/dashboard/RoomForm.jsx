@@ -9,6 +9,8 @@ import { ROOM_TYPES } from '../../utils/constants';
 
 let localImageIdCounter = 0;
 
+
+
 export default function RoomForm({
   mode, // 'create' | 'edit'
   defaultValues,

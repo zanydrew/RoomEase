@@ -5,6 +5,11 @@ import * as ownerService from '../../services/ownerService';
 import * as roomService from '../../services/roomService';
 import { notify } from '../../context/ToastConfig';
 import LoadingOverlay from '../../components/ui/LoadingOverlay';
+import { useLoadScript } from '@react-google-maps/api';
+
+
+const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+
 
 const DEFAULT_VALUES = {
   title: '',
@@ -18,6 +23,7 @@ const DEFAULT_VALUES = {
 };
 
 export default function PostRoom() {
+
   const navigate = useNavigate();
   const [images, setImages] = useState([]);
   const [amenityIds, setAmenityIds] = useState([]);
