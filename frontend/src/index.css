@@ -61,3 +61,28 @@
     text-align: left;
   }
 }
+
+/* Page transition — replayed on every route change via PageTransition's
+   key={pathname} remount. Kept to a short, subtle fade + rise so it reads
+   as "smooth" rather than a distracting slide. */
+@keyframes page-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-transition {
+  animation: page-fade-in 0.28s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-transition {
+    animation: none;
+  }
+}

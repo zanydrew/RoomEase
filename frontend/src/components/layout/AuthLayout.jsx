@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import authHero from '../../assets/authPic.svg';
+import PageTransition from './PageTransition';
 
 function tabClasses({ isActive }) {
   return [
@@ -23,7 +24,7 @@ export default function AuthLayout({ title, subtitle, children }) {
           {/* Dark Overlay */}
   <div className="absolute inset-0 bg-black/45" />
 
-  {/* Optional Gold Gradient */}
+  {/*  Gold Gradient */}
         <div className="absolute inset-0 bg-gradient-to-br from-[#3d3125]/70 via-transparent to-[#8a6f45]/40" />
         
 
@@ -65,7 +66,7 @@ export default function AuthLayout({ title, subtitle, children }) {
             </NavLink>
           </div>
 
-          <div className="mt-6">{children}</div>
+          <div className="mt-6"><PageTransition>{children}</PageTransition></div>
 
           <p className="mt-8 text-center text-xs text-text-soft">
             By continuing, you agree to RoomEase's{' '}
