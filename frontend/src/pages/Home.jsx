@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { ChevronRight, Home as HomeIcon } from 'lucide-react';
+import heroImage from '../assets/hero.svg';
 import SearchBar from '../components/forms/SearchBar';
 import RoomCard from '../components/room/RoomCard';
 import RoomCardSkeleton from '../components/room/RoomCardSkeleton';
@@ -65,15 +66,30 @@ export default function Home() {
  
   return (
     <div>
-      {/* Hero */}
-      <section className="relative flex min-h-[420px] items-end overflow-hidden bg-gradient-to-br from-[#2f2a22] via-[#4a3f2e] to-[#7c6640] sm:min-h-[480px]">
-        <div className="mx-auto w-full max-w-7xl px-4 pb-16 pt-24 sm:px-6 lg:px-8">
-          <h1 className="max-w-2xl text-3xl font-extrabold leading-tight text-white sm:text-5xl">
-            Find Your Place in Phnom Penh
-          </h1>
-        </div>
-      </section>
- 
+{/* Hero */}
+<section className="relative flex min-h-[420px] items-end overflow-hidden sm:min-h-[480px]">
+  {/* Background Image */}
+  <img
+    src={heroImage}
+    alt="RoomEase Hero"
+    className="absolute inset-0 h-full w-full object-cover"
+  />
+
+
+  {/*  Gradient Overlay */}
+  <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent" />
+
+  {/* Content */}
+  <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-16 pt-24 sm:px-6 lg:px-8">
+    <h1 className="max-w-2xl text-3xl font-extrabold leading-tight text-white sm:text-5xl">
+      Find Your Place in Phnom Penh
+    </h1>
+
+    <p className="mt-4 max-w-xl text-lg text-white/90">
+      Discover affordable rooms near universities, workplaces, and your favorite neighborhoods.
+    </p>
+  </div>
+</section>
       {/* Search bar overlapping the hero's bottom edge */}
       <div className="relative z-10 mx-auto -mt-8 max-w-4xl px-4 sm:-mt-10 sm:px-6 lg:px-8">
         <SearchBar />

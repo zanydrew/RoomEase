@@ -1,7 +1,9 @@
 import { NavLink } from 'react-router-dom';
+import authHero from '../../assets/authPic.svg';
 
 function tabClasses({ isActive }) {
   return [
+    
     'flex-1 rounded-full py-2 text-center text-sm font-semibold transition-colors',
     isActive ? 'bg-bg-card text-text shadow-sm' : 'text-text-soft',
   ].join(' ');
@@ -11,19 +13,39 @@ export default function AuthLayout({ title, subtitle, children }) {
   return (
     <div className="flex min-h-screen">
       {/* Left panel — replace this gradient with a real photo (src/assets/auth-hero.jpg) when available */}
-      <div className="relative hidden w-1/2 overflow-hidden bg-gradient-to-br from-[#3d3125] via-[#5c4a34] to-[#8a6f45] lg:flex lg:flex-col lg:justify-between lg:p-12">
-        <span className="text-xl font-extrabold text-white">RoomEase</span>
-        <div>
-          <h2 className="text-4xl font-extrabold leading-tight text-white">
-            Find your perfect
-            <br />
-            sanctuary.
-          </h2>
-          <p className="mt-4 max-w-sm text-sm text-white/80">
-            Curated, premium living spaces designed for the modern urbanite in Phnom Penh. Elevate
-            your living experience.
-          </p>
-        </div>
+      <div className="relative hidden w-1/2 overflow-hidden lg:flex">
+          {/* Background Image */}
+  <img
+    src={authHero}
+    alt="Modern apartment"
+    className="absolute inset-0 h-full w-full object-cover"
+        />
+          {/* Dark Overlay */}
+  <div className="absolute inset-0 bg-black/45" />
+
+  {/* Optional Gold Gradient */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#3d3125]/70 via-transparent to-[#8a6f45]/40" />
+        
+
+  {/* Content */}
+  <div className="relative z-10 flex h-full w-full flex-col justify-between p-12">
+    <span className="text-xl font-extrabold text-white">
+      RoomEase
+    </span>
+
+    <div>
+      <h2 className="text-5xl font-extrabold leading-tight text-white">
+        Find your perfect
+        <br />
+        sanctuary.
+      </h2>
+
+      <p className="mt-5 max-w-sm text-base leading-relaxed text-white/90">
+        Curated, premium living spaces for students and young professionals
+        across Phnom Penh.
+      </p>
+    </div>
+  </div>
       </div>
 
       {/* Right panel — form */}
