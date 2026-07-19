@@ -156,13 +156,13 @@ const getAllRooms = async (query) => {
   if (query.keyword) {
     const needle = `%${query.keyword.toLowerCase()}%`;
     where[Op.or] = [
-      sequelize.where(sequelize.fn("LOWER", sequelize.col("title")), {
+      sequelize.where(sequelize.fn("LOWER", sequelize.col("Room.title")), {
         [Op.like]: needle,
       }),
-      sequelize.where(sequelize.fn("LOWER", sequelize.col("address")), {
+      sequelize.where(sequelize.fn("LOWER", sequelize.col("Room.address")), {
         [Op.like]: needle,
       }),
-      sequelize.where(sequelize.fn("LOWER", sequelize.col("district")), {
+      sequelize.where(sequelize.fn("LOWER", sequelize.col("Room.district")), {
         [Op.like]: needle,
       }),
     ];
