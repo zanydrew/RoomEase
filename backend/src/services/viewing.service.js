@@ -81,7 +81,7 @@ const requestViewing = async (
     owner_id: room.owner_id,
     requested_date,
     requested_time,
-    notes: renter_note || null,
+    notes: null,
   });
 
   return viewing.toJSON();

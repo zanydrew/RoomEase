@@ -18,7 +18,7 @@ export default function RoomLocationMap({ room }) {
   const categoryMeta = CATEGORY_META[room?.room_type];
 
   const onMapLoad = (map) => {
-    map.setOptions({ styles: DARK_MAP_STYLE, disableDefaultUI: true, zoomControl: true });
+    map.setOptions({ styles: true, disableDefaultUI: true, zoomControl: true });
   };
 
   const directionsUrl = position
@@ -68,7 +68,7 @@ export default function RoomLocationMap({ room }) {
             center={position}
             zoom={15}
             onLoad={onMapLoad}
-            options={{ styles: DARK_MAP_STYLE, disableDefaultUI: true, zoomControl: true }}
+            options={{ styles: true, disableDefaultUI: true, zoomControl: true }}
           >
             <MarkerF
               position={position}

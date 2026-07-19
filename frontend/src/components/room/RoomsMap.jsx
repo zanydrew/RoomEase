@@ -33,7 +33,7 @@ export default function RoomsMap({ rooms = [], loading = false }) {
   }, [pins]);
 
   const onMapLoad = (map) => {
-    map.setOptions({ styles: DARK_MAP_STYLE, disableDefaultUI: true, zoomControl: true });
+    map.setOptions({ styles: true, disableDefaultUI: true, zoomControl: true });
   };
 
   const selected = pins.find((pin) => pin.room.uuid === selectedId) || null;
@@ -62,7 +62,7 @@ export default function RoomsMap({ rooms = [], loading = false }) {
           center={center}
           zoom={pins.length ? 13 : 12}
           onLoad={onMapLoad}
-          options={{ styles: DARK_MAP_STYLE, disableDefaultUI: true, zoomControl: true }}
+          options={{ styles: true, disableDefaultUI: true, zoomControl: true }}
         >
           {pins.map(({ room, position }) => (
             <MarkerF

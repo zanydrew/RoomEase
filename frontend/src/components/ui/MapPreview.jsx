@@ -33,7 +33,7 @@ export default function MapPreview({
             mapContainerClassName="h-full w-full"
             center={center}
             zoom={zoom}
-            options={{ styles: DARK_MAP_STYLE, disableDefaultUI: true, zoomControl: true }}
+            options={{ styles: true , disableDefaultUI: true, zoomControl: true }}
           />
         )}
       </div>

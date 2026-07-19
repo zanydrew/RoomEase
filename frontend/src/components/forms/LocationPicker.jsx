@@ -102,7 +102,7 @@ export default function LocationPicker({
             center={{ lat: 11.5564, lng: 104.9282 }}
             zoom={13}
             onClick={handleMapClick}
-            options={{ styles: DARK_MAP_STYLE, disableDefaultUI: true, zoomControl: true }}
+            options={{ styles: true, disableDefaultUI: true, zoomControl: true }}
           >
               
 
