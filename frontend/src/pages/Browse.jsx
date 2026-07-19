@@ -25,9 +25,13 @@ export default function Browse() {
   const universityName = searchParams.get('university') || '';
   const universityId = searchParams.get('university_id') || '';
   const sort = searchParams.get('sort') || '';
+  const heading =
+    searchParams.get('heading') || `rooms around ${district || universityName || keyword || 'Phnom Penh'}`;
 
-  const [minPrice, setMinPrice] = useState(Number(searchParams.get('minPrice')) || 10);
-  const [maxPrice, setMaxPrice] = useState(Number(searchParams.get('maxPrice')) || 1000);
+ const initialMinPrice = searchParams.get('minPrice');
+ const initialMaxPrice = searchParams.get('maxPrice');
+ const [minPrice, setMinPrice] = useState(initialMinPrice !== null ? Number(initialMinPrice) : 10);
+ const [maxPrice, setMaxPrice] = useState(initialMaxPrice !== null ? Number(initialMaxPrice) : 1000);
   
   const [amenityIds, setAmenityIds] = useState([]);
   const [page, setPage] = useState(1);
@@ -61,7 +65,6 @@ export default function Browse() {
   const rooms = data?.rooms || [];
   const total = data?.total ?? rooms.length;
   const totalPages = Math.ceil(total / PAGE_SIZE);
-  const areaLabel = district || universityName || keyword || 'Phnom Penh';
 
   function toggleAmenity(id) {
     setAmenityIds((current) => (current.includes(id) ? current.filter((a) => a !== id) : [...current, id]));
@@ -83,7 +86,7 @@ export default function Browse() {
 
         <div className="min-w-0 flex-1">
           <h1 className="text-xl font-bold text-text">
-            {total > 0 ? `Over ${total} rooms around ${areaLabel}` : `Rooms around ${areaLabel}`}
+            {total > 0 ? `Over ${total} ${heading}` : `No ${heading}`}
           </h1>
 
           {error && <ErrorState message="Couldn't load rooms." onRetry={refetch} />}

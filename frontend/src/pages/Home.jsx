@@ -15,12 +15,20 @@ import * as universityService from '../services/universityService';
 const RAIL_SIZE = 4;
 
 const SECTION_DISPLAY = {
-  district: (label) => ({ title: `Rooms around ${label}`, browseHref: `/browse?district=${encodeURIComponent(label)}` }),
+   district: (label) => ({
+   title: `Rooms around ${label}`,
+   browseHref: `/browse?district=${encodeURIComponent(label)}&heading=${encodeURIComponent(`rooms around ${label}`)}`,
+ }),
   university: (label, id) => ({
     title: `Rooms around ${label}`,
-    browseHref: id ? `/browse?university_id=${id}&university=${encodeURIComponent(label)}` : '/browse',
+   browseHref: id
+     ? `/browse?university_id=${id}&university=${encodeURIComponent(label)}&heading=${encodeURIComponent(`rooms near ${label}`)}`
+     : '/browse',
   }),
-  affordable: () => ({ title: 'Affordable rooms for workers', browseHref: '/browse?sort=price_asc' }),
+   affordable: () => ({
+   title: 'Affordable rooms for workers',
+   browseHref: `/browse?sort=price_asc&minPrice=0&maxPrice=200&heading=${encodeURIComponent('affordable rooms for workers')}`,
+ }),
 };
 
 function RoomRail({ title, browseHref, rooms, loading, error }) {
